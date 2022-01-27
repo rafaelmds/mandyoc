@@ -145,6 +145,10 @@ extern int n_interfaces;
 
 extern PetscInt binary_output;
 
+extern PetscBool log_messages;
+
+extern PetscBool log_messages;
+
 PetscErrorCode create_veloc_2d(PetscInt mx,PetscInt mz,PetscInt Px,PetscInt Pz)
 {
 

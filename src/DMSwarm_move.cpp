@@ -70,6 +70,8 @@ extern PetscInt RK4;
 
 extern PetscInt periodic_boundary;
 
+extern PetscBool log_messages;
+
 
 PetscReal linear_interpolation(PetscReal rx, PetscReal rz,PetscScalar V0, PetscScalar V1, PetscScalar V2, PetscScalar V3){
 	PetscReal rfac,vx;

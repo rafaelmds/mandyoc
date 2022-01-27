@@ -36,6 +36,8 @@ extern PetscInt periodic_boundary;
 
 extern double visc_MIN;
 
+extern PetscBool log_messages;
+
 PetscErrorCode Swarm2Mesh(){
 
 	PetscErrorCode ierr;

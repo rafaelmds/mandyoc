@@ -94,6 +94,8 @@ extern double kappa;
 extern double RHOM;
 extern double c_heat_capacity;
 
+extern PetscBool log_messages;
+
 PetscErrorCode create_thermal_2d(PetscInt mx,PetscInt mz,PetscInt Px,PetscInt Pz)
 {
 
