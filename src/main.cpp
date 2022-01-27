@@ -183,7 +183,7 @@ int main(int argc,char **args)
 	ierr = create_thermal_2d(Nx-1,Nz-1,Px,Pz);CHKERRQ(ierr);
 
 	sprintf(variable_name,"temperature");
-	ierr = write_all_(-1,Temper, variable_name, binary_output);
+	// ierr = write_all_(-1,Temper, variable_name, binary_output);
 
 	ierr = create_veloc_2d(Nx-1,Nz-1,Px,Pz);CHKERRQ(ierr);
 
@@ -257,14 +257,14 @@ int main(int argc,char **args)
 		PetscPrintf(PETSC_COMM_WORLD,"Solution of the pressure and velocity fields: done\n");
 	}
 
-	ierr = write_veloc_3d(tcont,binary_output);
-	ierr = write_veloc_cond(tcont,binary_output);
+	// ierr = write_veloc_3d(tcont,binary_output);
+	// ierr = write_veloc_cond(tcont,binary_output);
 
-	sprintf(variable_name,"temperature");
-	ierr = write_all_(tcont,Temper,variable_name, binary_output);
-	ierr = write_pressure(tcont,binary_output);
-	ierr = write_geoq_(tcont,binary_output);
-	ierr = write_tempo(tcont);
+	// sprintf(variable_name,"temperature");
+	// ierr = write_all_(tcont,Temper,variable_name, binary_output);
+	// ierr = write_pressure(tcont,binary_output);
+	// ierr = write_geoq_(tcont,binary_output);
+	// ierr = write_tempo(tcont);
 
 	if (sp_surface_tracking && geoq_on && n_interfaces>0 && interfaces_from_ascii==1) {
 		sp_write_surface_vec(tcont);
@@ -352,24 +352,24 @@ int main(int argc,char **args)
 			ierr = sp_interpolate_surface_particles_to_vec(); CHKERRQ(ierr);
 		}
 
-		if (tcont%print_step==0){
-			sprintf(variable_name,"temperature");
-			ierr = write_all_(tcont,Temper,variable_name,binary_output);
-			ierr = write_geoq_(tcont,binary_output);
-			ierr = write_veloc_3d(tcont,binary_output);
-			ierr = write_pressure(tcont,binary_output);
-			ierr = write_tempo(tcont);
-			PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"step_%d",tcont);
-			if (geoq_on){
-				if (print_step_files==1){
-					ierr = SwarmViewGP(dms,prefix);CHKERRQ(ierr);
-				}
+		// if (tcont%print_step==0){
+		// 	sprintf(variable_name,"temperature");
+		// 	ierr = write_all_(tcont,Temper,variable_name,binary_output);
+		// 	ierr = write_geoq_(tcont,binary_output);
+		// 	ierr = write_veloc_3d(tcont,binary_output);
+		// 	ierr = write_pressure(tcont,binary_output);
+		// 	ierr = write_tempo(tcont);
+		// 	PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"step_%d",tcont);
+		// 	if (geoq_on){
+		// 		if (print_step_files==1){
+		// 			ierr = SwarmViewGP(dms,prefix);CHKERRQ(ierr);
+		// 		}
 
-				if (sp_surface_tracking && n_interfaces>0 && interfaces_from_ascii==1) {
-					ierr = sp_write_surface_vec(tcont); CHKERRQ(ierr);
-				}
-			}
-		}
+		// 		if (sp_surface_tracking && n_interfaces>0 && interfaces_from_ascii==1) {
+		// 			ierr = sp_write_surface_vec(tcont); CHKERRQ(ierr);
+		// 		}
+		// 	}
+		// }
 
 		ierr = Calc_dt_calor();
 

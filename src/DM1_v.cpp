@@ -725,8 +725,8 @@ PetscErrorCode Init_Veloc(){
 	VecCopy(Veloc,Veloc_fut);
 	VecCopy(Veloc,Veloc_0);
 
-	write_veloc_3d(-1,binary_output);
-	write_veloc_cond(-1,binary_output);
+	// write_veloc_3d(-1,binary_output);
+	// write_veloc_cond(-1,binary_output);
 
 	PetscFunctionReturn(0);
 

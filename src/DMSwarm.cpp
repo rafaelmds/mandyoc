@@ -476,7 +476,7 @@ PetscErrorCode createSwarm()
 	ierr = DMView(dms,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
 
 	if (print_step_files==1){
-		ierr = SwarmViewGP(dms,"step_0");CHKERRQ(ierr);
+		// ierr = SwarmViewGP(dms,"step_0");CHKERRQ(ierr);
 	}
 
 

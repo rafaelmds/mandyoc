@@ -430,7 +430,7 @@ PetscErrorCode build_veloc_3d()
 		PRESSURE_INIT=1;
 		ierr = calc_pressure();
 		ierr = shift_pressure();
-		write_pressure(-1,binary_output);
+		// write_pressure(-1,binary_output);
 	}
 
 	ierr = moveSwarm(0.0);
@@ -634,7 +634,7 @@ PetscErrorCode write_veloc_cond(int cont, PetscInt binary_out)
 	char variable_name[100];
 
 	sprintf(variable_name,"bc_velocity");
-	write_all_(cont,Veloc_Cond,variable_name,binary_out);
+	// write_all_(cont,Veloc_Cond,variable_name,binary_out);
 
 	PetscFunctionReturn(0);
 }
