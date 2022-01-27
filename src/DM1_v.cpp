@@ -112,6 +112,8 @@ extern PetscReal theta_FSSA;
 
 extern PetscInt periodic_boundary;
 
+extern PetscBool log_messages;
+
 PetscErrorCode AssembleA_Veloc(Mat A,Mat AG,DM veloc_da, DM temper_da){
 
 	PetscErrorCode         ierr;

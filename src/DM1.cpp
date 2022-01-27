@@ -87,6 +87,7 @@ typedef struct {
 	//PetscScalar p; check for the 3d version
 } Stokes;
 
+extern PetscBool log_messages;
 
 PetscErrorCode DMDAGetLocalElementSize(DM da,PetscInt *mxl,PetscInt *mzl)
 {

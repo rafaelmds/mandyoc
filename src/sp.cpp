@@ -67,6 +67,7 @@ PetscErrorCode sp_fluvial2(PetscReal dt, PetscInt size);
 PetscErrorCode sp_forced(PetscReal dt, PetscInt size);
 PetscErrorCode DMDAGetElementCorners(DM da,PetscInt *sx,PetscInt *sz,PetscInt *mx,PetscInt *mz);
 
+extern PetscBool log_messages;
 
 PetscErrorCode sp_create_surface_vec()
 {

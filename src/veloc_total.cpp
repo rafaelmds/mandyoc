@@ -18,6 +18,7 @@ extern double visc_MIN;
 
 extern PetscReal Xi_min;
 
+extern PetscBool log_messages;
 
 PetscErrorCode veloc_total()
 {

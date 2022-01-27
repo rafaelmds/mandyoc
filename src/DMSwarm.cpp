@@ -76,7 +76,7 @@ extern PetscReal random_initial_strain;
 
 extern PetscInt binary_output;
 
-
+extern PetscBool log_messages;
 
 PetscErrorCode _DMLocatePoints_DMDARegular_IS(DM dm,Vec pos,IS *iscell)
 {
