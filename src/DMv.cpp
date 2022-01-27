@@ -385,7 +385,10 @@ PetscErrorCode create_veloc_2d(PetscInt mx,PetscInt mz,PetscInt Px,PetscInt Pz)
 	ierr = KSPSetOptionsPrefix(V_ksp,"veloc_"); CHKERRQ(ierr);
 
 	PetscTime(&Tempo2p);
-	if (rank==0) printf("Velocity field (creation): %lf s\n",Tempo2p-Tempo1p);
+	if (rank==0)
+		if (log_messages) {
+			printf("Velocity field (creation): %lf s\n",Tempo2p-Tempo1p);
+		}
 
 	montaKeVeloc_general(Ke_veloc_general,dx_const,dz_const);
 
@@ -441,7 +444,10 @@ PetscErrorCode build_veloc_3d()
 
 
 	PetscTime(&Tempo2p);
-	if (rank==0) printf("  Velocity field (building): %lf s\n",Tempo2p-Tempo1p);
+	if (rank==0)
+		if (log_messages) {
+			printf("  Velocity field (building): %lf s\n",Tempo2p-Tempo1p);
+		}
 
 	PetscFunctionReturn(0);
 
@@ -508,7 +514,10 @@ PetscErrorCode solve_veloc_3d()
 
 	ierr = VecDot(rk_vec2,rk_vec2,&denok);CHKERRQ(ierr); //denok = r0^2 ?
 
-	if (rank==0) printf("    Uzawa iteration: 0, denok = %lg, its = %d\n",denok, its);
+	if (rank==0)
+		if (log_messages) {
+			printf("    Uzawa iteration: 0, denok = %lg, its = %d\n",denok, its);
+		}
 
 
 
@@ -554,7 +563,10 @@ PetscErrorCode solve_veloc_3d()
 
 		VecDot(rk_vec2,rk_vec2,&denok);
 
-		if (rank==0) printf("    Uzawa iteration: %d, denok = %lg, its = %d\n",k,denok,its);
+		if (rank==0)
+			if (log_messages) {
+				printf("    Uzawa iteration: %d, denok = %lg, its = %d\n",k,denok,its);
+			}
 
 	}
 
@@ -564,7 +576,10 @@ PetscErrorCode solve_veloc_3d()
 
 
 	PetscTime(&Tempo2);
-	if (rank==0) printf("    Velocity field (solution): %lf s\n",Tempo2-Tempo1);
+	if (rank==0)
+		if (log_messages) {
+			printf("    Velocity field (solution): %lf s\n",Tempo2-Tempo1);
+		}
 
 	PetscFunctionReturn(0);
 
@@ -592,7 +607,10 @@ PetscErrorCode destroy_veloc_3d()
 	ierr = DMDestroy(&da_Veloc);CHKERRQ(ierr);
 
 	PetscTime(&Tempo2);
-	if (rank==0) printf("Velocity field (destroying): %lf s\n",Tempo2-Tempo1);
+	if (rank==0)
+		if (log_messages) {
+			printf("Velocity field (destroying): %lf s\n",Tempo2-Tempo1);
+		}
 
 
 	PetscFunctionReturn(0);

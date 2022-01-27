@@ -22,7 +22,7 @@ PetscScalar m_fluvial = 1.0;
 PetscScalar sea_level = 0.0;
 PetscScalar basal_heat = -1.0;
 PetscReal sp_dt = 0.0;
-PetscScalar sp_d_c = 0.0; 
+PetscScalar sp_d_c = 0.0;
 // Parameter file boolean variables
 PetscInt WITH_NON_LINEAR = 0; // 1=True, 0=False
 PetscInt WITH_ADIABATIC_H = 0; // 1=True, 0=False
@@ -343,3 +343,5 @@ PetscScalar *var_climate_time;
 PetscScalar *var_climate_scale;
 PetscInt n_var_climate;
 PetscInt cont_var_climate=0;
+
+PetscBool log_messages = PETSC_TRUE;

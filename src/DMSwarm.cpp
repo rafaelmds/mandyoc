@@ -283,9 +283,11 @@ PetscErrorCode createSwarm()
 	particles_per_ele = nx_part*nz_part;
 
 
-	PetscPrintf(PETSC_COMM_WORLD,"particles per element in x:  %d\n",nx_part);
-	PetscPrintf(PETSC_COMM_WORLD,"particles per element in z:  %d\n",nz_part);
-	PetscPrintf(PETSC_COMM_WORLD,"total particles per element: %d\n\n",particles_per_ele);
+	if (log_messages) {
+		PetscPrintf(PETSC_COMM_WORLD,"particles per element in x:  %d\n",nx_part);
+		PetscPrintf(PETSC_COMM_WORLD,"particles per element in z:  %d\n",nz_part);
+		PetscPrintf(PETSC_COMM_WORLD,"total particles per element: %d\n\n",particles_per_ele);
+	}
 
 	ierr = DMShellCreate(PETSC_COMM_WORLD,&dmcell);CHKERRQ(ierr);
 	ierr = DMSetApplicationContext(dmcell,(void*)da_Veloc);CHKERRQ(ierr);

@@ -224,14 +224,18 @@ PetscErrorCode sp_interpolate_surface_particles_to_vec()
         }
 
         if ((int)sp_top_surface_global_n_values[i] == 0) {
-            ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_top_surface_global_n_values i=%d\n", rank, i); CHKERRQ(ierr);
-            ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_top_surface_global_values=%e\n", rank, sp_top_surface_global_values[i]); CHKERRQ(ierr);
+            if (log_messages) {
+                ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_top_surface_global_n_values i=%d\n", rank, i); CHKERRQ(ierr);
+                ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_top_surface_global_values=%e\n", rank, sp_top_surface_global_values[i]); CHKERRQ(ierr);
+            }
             exit(1);
         }
 
         if ((int)sp_bot_surface_global_n_values[i] == 0) {
-            ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_bot_surface_global_n_values i=%d\n", rank, i); CHKERRQ(ierr);
-            ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_bot_surface_global_values=%e\n", rank, sp_bot_surface_global_values[i]); CHKERRQ(ierr);
+            if (log_messages) {
+                ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_bot_surface_global_n_values i=%d\n", rank, i); CHKERRQ(ierr);
+                ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_bot_surface_global_values=%e\n", rank, sp_bot_surface_global_values[i]); CHKERRQ(ierr);
+            }
             exit(1);
         }
 
@@ -289,7 +293,9 @@ PetscErrorCode evaluate_surface_processes()
     ierr = VecGetArray(sp_surface_global_aux, &y_aux);
 
     if (!rank) {
-        ierr = PetscPrintf(PETSC_COMM_SELF, "[rank %d] Evaluating surface processes\n", rank); CHKERRQ(ierr);
+        if (log_messages) {
+            ierr = PetscPrintf(PETSC_COMM_SELF, "[rank %d] Evaluating surface processes\n", rank); CHKERRQ(ierr);
+        }
 
         ierr = VecGetArray(seq_surface, &seq_y);
         for (j = 0; j < size; j++) {
@@ -316,7 +322,9 @@ PetscErrorCode evaluate_surface_processes()
         }
 
     } else {
-        ierr = PetscPrintf(PETSC_COMM_SELF, "[rank %d] Wating for surface processes evaluation\n", rank); CHKERRQ(ierr);
+        if (log_messages) {
+            ierr = PetscPrintf(PETSC_COMM_SELF, "[rank %d] Wating for surface processes evaluation\n", rank); CHKERRQ(ierr);
+        }
     }
 
     ierr = VecDestroy(&seq_surface); CHKERRQ(ierr);
@@ -328,7 +336,9 @@ PetscErrorCode evaluate_surface_processes()
 
     MPI_Barrier(PETSC_COMM_WORLD);
 
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[rank %d] Adjusting local part of global vectors from global seq arrays\n", rank); CHKERRQ(ierr);
+    if (log_messages) {
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[rank %d] Adjusting local part of global vectors from global seq arrays\n", rank); CHKERRQ(ierr);
+    }
     for (j = low; j < high; j++) {
         y[j-low] = global_surface_array_helper[j];
         y_aux[j-low] = global_surface_array_helper_aux[j];
@@ -382,7 +392,9 @@ PetscErrorCode update_particles_properties()
 
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
-    ierr = PetscPrintf(PETSC_COMM_WORLD, "[update_particles_properties] (started) [rank %d]\n", rank); CHKERRQ(ierr);
+    if (log_messages) {
+        ierr = PetscPrintf(PETSC_COMM_WORLD, "[update_particles_properties] (started) [rank %d]\n", rank); CHKERRQ(ierr);
+    }
 
 	ierr = DMSwarmGetLocalSize(dms, &nlocal);CHKERRQ(ierr);
 	ierr = DMSwarmGetField(dms, DMSwarmPICField_coor, &bs, NULL, (void**)&pcoords);CHKERRQ(ierr);
@@ -441,7 +453,9 @@ PetscErrorCode update_particles_properties()
             }
 
             if (py < (ys_aux + dh)) {
-                ierr = PetscPrintf(PETSC_COMM_SELF, "(debug) [update_particles_properties] [rank %d] AIR  => LAND : p %d | layer %d=>%d | py %.8e < ys %.8e | x(%.8e < %.8e < %.8e)\n", rank, p, layer[p], n_interfaces-1, py, ys, i*sp_dx, px, (i+1)*sp_dx); CHKERRQ(ierr);
+                if (log_messages) {
+                    ierr = PetscPrintf(PETSC_COMM_SELF, "(debug) [update_particles_properties] [rank %d] AIR  => LAND : p %d | layer %d=>%d | py %.8e < ys %.8e | x(%.8e < %.8e < %.8e)\n", rank, p, layer[p], n_interfaces-1, py, ys, i*sp_dx, px, (i+1)*sp_dx); CHKERRQ(ierr);
+                }
                 // ierr = PetscPrintf(PETSC_COMM_SELF, "(debug) [update_particles_properties] [rank %d] A2L i %3d | ie %3d | rx %.2f | %e %e %e %e %d\n", rank, i, i-sex, rx, y[i-sex], y[i-sex] * (1.0 - rx) + y[i-sex+1] * rx, y[i-sex+1], py, layer[p]); CHKERRQ(ierr);
 
                 layer[p] = n_interfaces - 1;
@@ -461,7 +475,9 @@ PetscErrorCode update_particles_properties()
             }
 
             if (py > (ys_aux + dh)) {
-                ierr = PetscPrintf(PETSC_COMM_SELF, "(debug) [update_particles_properties] [rank %d] LAND => AIR  : p %d | layer %d=>%d | py %.8e > ys %.8e | x(%.8e < %.8e < %.8e)\n", rank, p, layer[p], n_interfaces, py, ys, i*sp_dx, px, (i+1)*sp_dx); CHKERRQ(ierr);
+                if (log_messages) {
+                    ierr = PetscPrintf(PETSC_COMM_SELF, "(debug) [update_particles_properties] [rank %d] LAND => AIR  : p %d | layer %d=>%d | py %.8e > ys %.8e | x(%.8e < %.8e < %.8e)\n", rank, p, layer[p], n_interfaces, py, ys, i*sp_dx, px, (i+1)*sp_dx); CHKERRQ(ierr);
+                }
                 // ierr = PetscPrintf(PETSC_COMM_SELF, "(debug) [update_particles_properties] [rank %d] L2A i %3d | ie %3d | rx %.2f | %e %e %e %e %d\n", rank, i, i-sex, rx, y[i-sex], y[i-sex] * (1.0 - rx) + y[i-sex+1] * rx, y[i-sex+1], py, layer[p]); CHKERRQ(ierr);
 
                 layer[p] = n_interfaces;
@@ -483,7 +499,9 @@ PetscErrorCode update_particles_properties()
     ierr = VecRestoreArray(sp_surface_global, &y); CHKERRQ(ierr);
     pcoords = NULL;
 
-    ierr = PetscPrintf(PETSC_COMM_WORLD, "[update_particles_properties] (completed) [rank %d]\n", rank); CHKERRQ(ierr);
+    if (log_messages) {
+        ierr = PetscPrintf(PETSC_COMM_WORLD, "[update_particles_properties] (completed) [rank %d]\n", rank); CHKERRQ(ierr);
+    }
 
     PetscFunctionReturn(0);
 }
@@ -569,13 +587,15 @@ PetscErrorCode sp_diffusion(PetscReal dt, PetscInt size)
 
     r = sp_d_c*sp_dt/(sp_dx*sp_dx);
 
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dt=%e\n", sp_dt); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] max_steps=%d\n", max_steps); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_d_c=%e\n", sp_d_c); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] r=%e\n", r); CHKERRQ(ierr);
+    if (log_messages) {
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dt=%e\n", sp_dt); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] max_steps=%d\n", max_steps); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_d_c=%e\n", sp_d_c); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] r=%e\n", r); CHKERRQ(ierr);
+    }
     // for (j = 0; j < size; j++) {
     //     ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_y_aux=%e\n", sp_y_aux[j]); CHKERRQ(ierr);
     // }
@@ -611,7 +631,7 @@ PetscErrorCode sp_fluvial(PetscReal dt, PetscInt size)
     PetscScalar *h,*h_aux,*h_aux2,*q,*fc,*vR;
     PetscInt *hi;
     PetscInt sum;
-    
+
     PetscReal K = K_fluvial;//2.0E-7;
 
 
@@ -631,12 +651,14 @@ PetscErrorCode sp_fluvial(PetscReal dt, PetscInt size)
 
     //r = sp_d_c*sp_dt/(sp_dx*sp_dx);
 
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dt=%e\n", sp_dt); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] max_steps=%d\n", max_steps); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_d_c=%e\n", sp_d_c); CHKERRQ(ierr);
+    if (log_messages) {
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dt=%e\n", sp_dt); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] max_steps=%d\n", max_steps); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_d_c=%e\n", sp_d_c); CHKERRQ(ierr);
+    }
     //ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] r=%e\n", r); CHKERRQ(ierr);
     // for (j = 0; j < size; j++) {
     //     ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_y_aux=%e\n", sp_y_aux[j]); CHKERRQ(ierr);
@@ -663,7 +685,7 @@ PetscErrorCode sp_fluvial(PetscReal dt, PetscInt size)
 
     for (j=0;j<size;j++) vR[j] = 1.0;//PetscExpReal(-PetscPowReal(sp_dx*j-Lx/2,4)/PetscPowReal(Lx/8,4));
 
-    
+
 	if (precipitation_profile==1){
 		FILE *f_prec;
 		f_prec = fopen("precipitation.txt","r");
@@ -682,7 +704,7 @@ PetscErrorCode sp_fluvial(PetscReal dt, PetscInt size)
     for (j=0;j<size;j++) h_aux[j]=h[j];
 
     for (t=0; t < max_steps; t++) {
-        for (j=0;j<size;j++) q[j] = sp_dx*vR[j];    
+        for (j=0;j<size;j++) q[j] = sp_dx*vR[j];
         for (j=0;j<size;j++) {
             fc[j]=1;
             if (h[j]<hsl) fc[j]=0;
@@ -691,7 +713,7 @@ PetscErrorCode sp_fluvial(PetscReal dt, PetscInt size)
         fc[size-1]=0;
         for (j=0;j<size;j++) {if (h[j]<hsl) h[j]=hsl;}
         for (j=0;j<size;j++) hi[j]=j;
-        
+
         for (sum=0,j=0;j<size;j++) sum+=fc[j];
         while (sum>0){
 
@@ -755,9 +777,9 @@ PetscErrorCode sp_fluvial(PetscReal dt, PetscInt size)
     PetscFree(fc);
     PetscFree(q);
     PetscFree(hi);
-    
 
-   
+
+
 
     PetscFunctionReturn(0);
 }
@@ -779,7 +801,7 @@ PetscErrorCode sp_fluvial2(PetscReal dt, PetscInt size)
     PetscInt ci,cf,out;
     PetscInt sum;
     PetscReal hmax;
-    
+
     PetscReal K = K_fluvial;//2.0E-7;
 
 
@@ -799,12 +821,14 @@ PetscErrorCode sp_fluvial2(PetscReal dt, PetscInt size)
 
     //r = sp_d_c*sp_dt/(sp_dx*sp_dx);
 
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dt=%e\n", sp_dt); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] max_steps=%d\n", max_steps); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_d_c=%e\n", sp_d_c); CHKERRQ(ierr);
+    if (log_messages) {
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dt=%e\n", sp_dt); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] max_steps=%d\n", max_steps); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_d_c=%e\n", sp_d_c); CHKERRQ(ierr);
+    }
     //ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] r=%e\n", r); CHKERRQ(ierr);
     // for (j = 0; j < size; j++) {
     //     ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_y_aux=%e\n", sp_y_aux[j]); CHKERRQ(ierr);
@@ -828,7 +852,7 @@ PetscErrorCode sp_fluvial2(PetscReal dt, PetscInt size)
     for (j=0;j<size;j++) h_aux[j]=h[j];
 
     for (t=0; t < max_steps; t++) {
-        for (j=0;j<size;j++) q[j] = sp_dx;    
+        for (j=0;j<size;j++) q[j] = sp_dx;
         for (j=0;j<size;j++) {
             fc[j]=1;
             if (h[j]<hsl) fc[j]=0;
@@ -846,7 +870,7 @@ PetscErrorCode sp_fluvial2(PetscReal dt, PetscInt size)
         cf=1;
         out = 0;
         for (j=1;j<size;j++){
-            if (out==0 && fc[j]==1){ 
+            if (out==0 && fc[j]==1){
                 ci=j;
                 cf=j;
                 out=1;
@@ -909,7 +933,7 @@ PetscErrorCode sp_fluvial2(PetscReal dt, PetscInt size)
     PetscFree(fc);
     PetscFree(q);
     PetscFree(hi);
-    
+
 
 
 
@@ -928,7 +952,7 @@ PetscErrorCode sp_fluvial2(PetscReal dt, PetscInt size)
     }
     */
 
-   
+
 
     PetscFunctionReturn(0);
 }
@@ -961,12 +985,14 @@ PetscErrorCode sp_forced(PetscReal dt, PetscInt size)
 
     //r = sp_d_c*sp_dt/(sp_dx*sp_dx);
 
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dt=%e\n", sp_dt); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] max_steps=%d\n", max_steps); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_d_c=%e\n", sp_d_c); CHKERRQ(ierr);
+    if (log_messages) {
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dt=%e\n", sp_dt); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] max_steps=%d\n", max_steps); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_d_c=%e\n", sp_d_c); CHKERRQ(ierr);
+    }
     //ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] r=%e\n", r); CHKERRQ(ierr);
     // for (j = 0; j < size; j++) {
     //     ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_y_aux=%e\n", sp_y_aux[j]); CHKERRQ(ierr);
@@ -991,7 +1017,7 @@ PetscErrorCode sp_forced(PetscReal dt, PetscInt size)
 
     for (j=0;j<size;j++) vR[j] = 1.0;//PetscExpReal(-PetscPowReal(sp_dx*j-Lx/2,4)/PetscPowReal(Lx/8,4));
 
-    
+
 	if (precipitation_profile==1){
 		FILE *f_prec;
 		f_prec = fopen("precipitation.txt","r");
@@ -1024,9 +1050,9 @@ PetscErrorCode sp_forced(PetscReal dt, PetscInt size)
     PetscFree(fc);
     PetscFree(q);
     PetscFree(hi);
-    
 
-   
+
+
 
     PetscFunctionReturn(0);
 }

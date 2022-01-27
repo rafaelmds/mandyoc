@@ -12,17 +12,17 @@ extern double RHOM;
 PetscErrorCode calc_drho()
 {
 	PetscErrorCode ierr=0;
-	
+
 	VecCopy(Temper, dRho); CHKERRQ(ierr);
-	
+
 	PetscScalar a;
-	
+
 	a=alpha_exp_thermo*gravity*RHOM; CHKERRQ(ierr);//check: replace RHOM by geoq_rho
-	
+
 	VecAXPBY(dRho,-gravity,a,geoq_rho); CHKERRQ(ierr);
-	
+
 	return ierr;
-	
+
 }
 
 
@@ -61,63 +61,63 @@ PetscErrorCode DMDAGetElementCorners(DM da,PetscInt *sx,PetscInt *sz,PetscInt *m
 PetscErrorCode calc_pressure()
 {
 	Stokes					**pp;
-	
+
 	PetscErrorCode         ierr;
-	
+
 	ierr = VecZeroEntries(local_P);CHKERRQ(ierr);
-	
+
 	ierr = DMGlobalToLocalBegin(da_Veloc,Pressure,INSERT_VALUES,local_P);
 	ierr = DMGlobalToLocalEnd(  da_Veloc,Pressure,INSERT_VALUES,local_P);
-	
+
 	ierr = DMDAVecGetArray(da_Veloc,local_P,&pp);CHKERRQ(ierr);
-	
-	
+
+
 	int M,P;
 	double zz;
-	
+
 	PetscFunctionBeginUser;
 	ierr = DMDAGetInfo(da_Thermal,0,&M,&P,NULL,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
-	
-	
+
+
 	PetscInt               sex1,sez1,mx1,mz1;
-	
+
 	PetscInt               sex,sez,mx,mz;
 	PetscInt               ei,ek;
-	
+
 	ierr = DMDAGetElementCorners(da_Thermal,&sex,&sez,&mx,&mz);CHKERRQ(ierr);
-	
+
 	ierr = DMDAGetElementCorners(da_Veloc,&sex1,&sez1,&mx1,&mz1);CHKERRQ(ierr);
-	
+
 	if ((sex-sex1!=0)||(sez-sez1!=0)||(mx-mx1!=0)||(mz-mz1!=0)){
 		printf("%d %d %d %d\n",sex-sex1,sez-sez1,mx-mx1,mz-mz1);
 		SETERRQ1(PETSC_COMM_WORLD,1,"Wrong partition (temper,velocity)\n",1);
 	}
-	
-	
+
+
 	PetscReal interp_interfaces[n_interfaces];
-	
+
 	for (ek = sez; ek < sez+mz; ek++) {
 		for (ei = sex; ei < sex+mx; ei++) {
 			/*indr[0].i=ei  ; indr[0].j=ek  ;
 			indr[1].i=ei+1; indr[1].j=ek  ;
 			indr[2].i=ei  ; indr[2].j=ek+1;
 			indr[3].i=ei+1; indr[3].j=ek+1;
-			
+
 			xx = ei*Lx/(M-1);*/
 			zz = -(P-1-ek)*depth/(P-1);
-			
-			
+
+
 			for (int in=0;in<n_interfaces;in++){
 				float rfac = (0.5);
 				interp_interfaces[in] = interfaces[ei + Nx*in] * rfac;
-				
+
 				rfac = (0.5);
 				interp_interfaces[in] += interfaces[(ei+1) + Nx*in] * rfac;
-				
+
 			}
-			
+
 			double pressure_cumulat = 0;
-			
+
 			int verif=0;
 			/*for (int in=0;in<n_interfaces && verif==0;in++){
 				if (zz<interp_interfaces[in]){
@@ -148,8 +148,8 @@ PetscErrorCode calc_pressure()
 			if (verif==0){
 				pressure_cumulat += inter_rho[0]*gravity*(-zz);
 			}*/
-			
-			
+
+
 			if (zz>interp_interfaces[n_interfaces-1]){
 				pressure_cumulat += inter_rho[n_interfaces]*gravity*(-zz);
 			}
@@ -171,20 +171,20 @@ PetscErrorCode calc_pressure()
 					pressure_cumulat += inter_rho[0]*gravity*(interp_interfaces[0]-zz);
 				}
 			}
-			
+
 			pp[ek][ei].u = pressure_cumulat;
-			
+
 		}
 	}
-	
-	
+
+
 	ierr = DMDAVecRestoreArray(da_Veloc,local_P,&pp);CHKERRQ(ierr);
-	
+
 	ierr = DMLocalToGlobalBegin(da_Veloc,local_P,INSERT_VALUES,Pressure);CHKERRQ(ierr);
 	ierr = DMLocalToGlobalEnd(da_Veloc,local_P,INSERT_VALUES,Pressure);CHKERRQ(ierr);
-	
+
 	return ierr;
-	
+
 }
 
 
@@ -194,9 +194,9 @@ PetscErrorCode shift_pressure() //necessary if the surface pressure is not close
 	Stokes					**pp;
 	PetscScalar				**pp_aux;
 
-	
+
 	PetscErrorCode         ierr;
-	
+
 
 	//get Pressure array
 	ierr = DMGlobalToLocalBegin(da_Veloc,Pressure,INSERT_VALUES,local_P);
@@ -208,10 +208,10 @@ PetscErrorCode shift_pressure() //necessary if the surface pressure is not close
 	ierr = DMGlobalToLocalEnd(  da_Thermal,Pressure_aux,INSERT_VALUES,local_P_aux);
 	ierr = DMDAVecGetArray(da_Thermal,local_P_aux,&pp_aux);CHKERRQ(ierr);
 
-	
+
 	PetscInt       sx,sz,mmx,mmz;
 	PetscInt i,k;
-	
+
 	ierr = DMDAGetCorners(da_Thermal,&sx,&sz,NULL,&mmx,&mmz,NULL);CHKERRQ(ierr);
 
 	PetscScalar ppp;
@@ -252,7 +252,7 @@ PetscErrorCode shift_pressure() //necessary if the surface pressure is not close
     MPI_Allreduce(&pressure_air,&pressure_air_all,1,MPI_FLOAT,MPI_SUM,PETSC_COMM_WORLD);
 
 	PetscReal pressure_min;
-	
+
 	pressure_min = pressure_air_all/cont_air_all;
 	pressure_min=-pressure_min;
 	VecShift(Pressure_aux,pressure_min);
@@ -264,5 +264,5 @@ PetscErrorCode shift_pressure() //necessary if the surface pressure is not close
 	ierr = DMLocalToGlobalEnd(da_Veloc,local_P,INSERT_VALUES,Pressure);CHKERRQ(ierr);
 
 	return ierr;
-	
+
 }

@@ -639,7 +639,9 @@ PetscErrorCode Init_Veloc(){
 		sprintf(s1,"input_velocity_%d.txt",i_veloc);
 		sprintf(s2,"veloc_init.bin");
 
-		PetscPrintf(PETSC_COMM_WORLD,"Reading %s\n",s1);
+		if (log_messages) {
+			PetscPrintf(PETSC_COMM_WORLD,"Reading %s\n",s1);
+		}
 
 		if (rank==0){
 			ierr = ascii2bin(s1,s2); CHKERRQ(ierr);
