@@ -76,7 +76,7 @@ extern PetscReal random_initial_strain;
 
 extern PetscInt binary_output;
 
-extern PetscBool log_messages;
+extern PetscBool disabled_log_messages;
 
 PetscErrorCode _DMLocatePoints_DMDARegular_IS(DM dm,Vec pos,IS *iscell)
 {
@@ -283,7 +283,7 @@ PetscErrorCode createSwarm()
 	particles_per_ele = nx_part*nz_part;
 
 
-	if (log_messages) {
+	if (disabled_log_messages == PETSC_FALSE) {
 		PetscPrintf(PETSC_COMM_WORLD,"particles per element in x:  %d\n",nx_part);
 		PetscPrintf(PETSC_COMM_WORLD,"particles per element in z:  %d\n",nz_part);
 		PetscPrintf(PETSC_COMM_WORLD,"total particles per element: %d\n\n",particles_per_ele);

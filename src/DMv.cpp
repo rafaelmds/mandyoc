@@ -145,9 +145,9 @@ extern int n_interfaces;
 
 extern PetscInt binary_output;
 
-extern PetscBool log_messages;
+extern PetscBool disabled_log_messages;
 
-extern PetscBool log_messages;
+extern PetscBool disabled_log_messages;
 
 PetscErrorCode create_veloc_2d(PetscInt mx,PetscInt mz,PetscInt Px,PetscInt Pz)
 {
@@ -390,7 +390,7 @@ PetscErrorCode create_veloc_2d(PetscInt mx,PetscInt mz,PetscInt Px,PetscInt Pz)
 
 	PetscTime(&Tempo2p);
 	if (rank==0)
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			printf("Velocity field (creation): %lf s\n",Tempo2p-Tempo1p);
 		}
 
@@ -449,7 +449,7 @@ PetscErrorCode build_veloc_3d()
 
 	PetscTime(&Tempo2p);
 	if (rank==0)
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			printf("  Velocity field (building): %lf s\n",Tempo2p-Tempo1p);
 		}
 
@@ -519,7 +519,7 @@ PetscErrorCode solve_veloc_3d()
 	ierr = VecDot(rk_vec2,rk_vec2,&denok);CHKERRQ(ierr); //denok = r0^2 ?
 
 	if (rank==0)
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			printf("    Uzawa iteration: 0, denok = %lg, its = %d\n",denok, its);
 		}
 
@@ -568,7 +568,7 @@ PetscErrorCode solve_veloc_3d()
 		VecDot(rk_vec2,rk_vec2,&denok);
 
 		if (rank==0)
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				printf("    Uzawa iteration: %d, denok = %lg, its = %d\n",k,denok,its);
 			}
 
@@ -581,7 +581,7 @@ PetscErrorCode solve_veloc_3d()
 
 	PetscTime(&Tempo2);
 	if (rank==0)
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			printf("    Velocity field (solution): %lf s\n",Tempo2-Tempo1);
 		}
 
@@ -612,7 +612,7 @@ PetscErrorCode destroy_veloc_3d()
 
 	PetscTime(&Tempo2);
 	if (rank==0)
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			printf("Velocity field (destroying): %lf s\n",Tempo2-Tempo1);
 		}
 

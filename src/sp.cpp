@@ -67,7 +67,7 @@ PetscErrorCode sp_fluvial2(PetscReal dt, PetscInt size);
 PetscErrorCode sp_forced(PetscReal dt, PetscInt size);
 PetscErrorCode DMDAGetElementCorners(DM da,PetscInt *sx,PetscInt *sz,PetscInt *mx,PetscInt *mz);
 
-extern PetscBool log_messages;
+extern PetscBool disabled_log_messages;
 
 PetscErrorCode sp_create_surface_vec()
 {
@@ -225,7 +225,7 @@ PetscErrorCode sp_interpolate_surface_particles_to_vec()
         }
 
         if ((int)sp_top_surface_global_n_values[i] == 0) {
-            if (log_messages) {
+            if (disabled_log_messages == PETSC_FALSE) {
                 ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_top_surface_global_n_values i=%d\n", rank, i); CHKERRQ(ierr);
                 ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_top_surface_global_values=%e\n", rank, sp_top_surface_global_values[i]); CHKERRQ(ierr);
             }
@@ -233,7 +233,7 @@ PetscErrorCode sp_interpolate_surface_particles_to_vec()
         }
 
         if ((int)sp_bot_surface_global_n_values[i] == 0) {
-            if (log_messages) {
+            if (disabled_log_messages == PETSC_FALSE) {
                 ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_bot_surface_global_n_values i=%d\n", rank, i); CHKERRQ(ierr);
                 ierr = PetscPrintf(PETSC_COMM_SELF, "ERROR [sp_interpolate_surface_particles_to_vec] rank=%d sp_bot_surface_global_values=%e\n", rank, sp_bot_surface_global_values[i]); CHKERRQ(ierr);
             }
@@ -294,7 +294,7 @@ PetscErrorCode evaluate_surface_processes()
     ierr = VecGetArray(sp_surface_global_aux, &y_aux);
 
     if (!rank) {
-        if (log_messages) {
+        if (disabled_log_messages == PETSC_FALSE) {
             ierr = PetscPrintf(PETSC_COMM_SELF, "[rank %d] Evaluating surface processes\n", rank); CHKERRQ(ierr);
         }
 
@@ -323,7 +323,7 @@ PetscErrorCode evaluate_surface_processes()
         }
 
     } else {
-        if (log_messages) {
+        if (disabled_log_messages == PETSC_FALSE) {
             ierr = PetscPrintf(PETSC_COMM_SELF, "[rank %d] Wating for surface processes evaluation\n", rank); CHKERRQ(ierr);
         }
     }
@@ -337,7 +337,7 @@ PetscErrorCode evaluate_surface_processes()
 
     MPI_Barrier(PETSC_COMM_WORLD);
 
-    if (log_messages) {
+    if (disabled_log_messages == PETSC_FALSE) {
         ierr = PetscPrintf(PETSC_COMM_SELF, "[rank %d] Adjusting local part of global vectors from global seq arrays\n", rank); CHKERRQ(ierr);
     }
     for (j = low; j < high; j++) {
@@ -393,7 +393,7 @@ PetscErrorCode update_particles_properties()
 
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
 
-    if (log_messages) {
+    if (disabled_log_messages == PETSC_FALSE) {
         ierr = PetscPrintf(PETSC_COMM_WORLD, "[update_particles_properties] (started) [rank %d]\n", rank); CHKERRQ(ierr);
     }
 
@@ -454,7 +454,7 @@ PetscErrorCode update_particles_properties()
             }
 
             if (py < (ys_aux + dh)) {
-                if (log_messages) {
+                if (disabled_log_messages == PETSC_FALSE) {
                     ierr = PetscPrintf(PETSC_COMM_SELF, "(debug) [update_particles_properties] [rank %d] AIR  => LAND : p %d | layer %d=>%d | py %.8e < ys %.8e | x(%.8e < %.8e < %.8e)\n", rank, p, layer[p], n_interfaces-1, py, ys, i*sp_dx, px, (i+1)*sp_dx); CHKERRQ(ierr);
                 }
                 // ierr = PetscPrintf(PETSC_COMM_SELF, "(debug) [update_particles_properties] [rank %d] A2L i %3d | ie %3d | rx %.2f | %e %e %e %e %d\n", rank, i, i-sex, rx, y[i-sex], y[i-sex] * (1.0 - rx) + y[i-sex+1] * rx, y[i-sex+1], py, layer[p]); CHKERRQ(ierr);
@@ -476,7 +476,7 @@ PetscErrorCode update_particles_properties()
             }
 
             if (py > (ys_aux + dh)) {
-                if (log_messages) {
+                if (disabled_log_messages == PETSC_FALSE) {
                     ierr = PetscPrintf(PETSC_COMM_SELF, "(debug) [update_particles_properties] [rank %d] LAND => AIR  : p %d | layer %d=>%d | py %.8e > ys %.8e | x(%.8e < %.8e < %.8e)\n", rank, p, layer[p], n_interfaces, py, ys, i*sp_dx, px, (i+1)*sp_dx); CHKERRQ(ierr);
                 }
                 // ierr = PetscPrintf(PETSC_COMM_SELF, "(debug) [update_particles_properties] [rank %d] L2A i %3d | ie %3d | rx %.2f | %e %e %e %e %d\n", rank, i, i-sex, rx, y[i-sex], y[i-sex] * (1.0 - rx) + y[i-sex+1] * rx, y[i-sex+1], py, layer[p]); CHKERRQ(ierr);
@@ -500,7 +500,7 @@ PetscErrorCode update_particles_properties()
     ierr = VecRestoreArray(sp_surface_global, &y); CHKERRQ(ierr);
     pcoords = NULL;
 
-    if (log_messages) {
+    if (disabled_log_messages == PETSC_FALSE) {
         ierr = PetscPrintf(PETSC_COMM_WORLD, "[update_particles_properties] (completed) [rank %d]\n", rank); CHKERRQ(ierr);
     }
 
@@ -588,7 +588,7 @@ PetscErrorCode sp_diffusion(PetscReal dt, PetscInt size)
 
     r = sp_d_c*sp_dt/(sp_dx*sp_dx);
 
-    if (log_messages) {
+    if (disabled_log_messages == PETSC_FALSE) {
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
@@ -652,7 +652,7 @@ PetscErrorCode sp_fluvial(PetscReal dt, PetscInt size)
 
     //r = sp_d_c*sp_dt/(sp_dx*sp_dx);
 
-    if (log_messages) {
+    if (disabled_log_messages == PETSC_FALSE) {
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
@@ -822,7 +822,7 @@ PetscErrorCode sp_fluvial2(PetscReal dt, PetscInt size)
 
     //r = sp_d_c*sp_dt/(sp_dx*sp_dx);
 
-    if (log_messages) {
+    if (disabled_log_messages == PETSC_FALSE) {
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
@@ -986,7 +986,7 @@ PetscErrorCode sp_forced(PetscReal dt, PetscInt size)
 
     //r = sp_d_c*sp_dt/(sp_dx*sp_dx);
 
-    if (log_messages) {
+    if (disabled_log_messages == PETSC_FALSE) {
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] size=%d\n", size); CHKERRQ(ierr);
         ierr = PetscPrintf(PETSC_COMM_SELF, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);

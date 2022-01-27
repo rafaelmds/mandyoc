@@ -18,7 +18,7 @@ extern double visc_MIN;
 
 extern PetscReal Xi_min;
 
-extern PetscBool log_messages;
+extern PetscBool disabled_log_messages;
 
 PetscErrorCode veloc_total()
 {
@@ -72,7 +72,7 @@ PetscErrorCode veloc_total()
 
 			Xi = 1.0 - vivi/PetscSqrtReal(sig1*sig2);
 
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				PetscPrintf(PETSC_COMM_WORLD,"      Xi = %lg %d\n\n",Xi,step);
 			}
 

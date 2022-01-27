@@ -87,7 +87,7 @@ typedef struct {
 	//PetscScalar p; check for the 3d version
 } Stokes;
 
-extern PetscBool log_messages;
+extern PetscBool disabled_log_messages;
 
 PetscErrorCode DMDAGetLocalElementSize(DM da,PetscInt *mxl,PetscInt *mzl)
 {
@@ -897,7 +897,7 @@ PetscErrorCode mean_value_periodic_boundary(DM da,Vec F,Vec local_F, PetscScalar
 	ierr = DMLocalToGlobalEnd(da,local_F,INSERT_VALUES,F);CHKERRQ(ierr);
 	ierr = DMRestoreLocalVector(da,&local_F);CHKERRQ(ierr);
 
-	if (log_messages) {
+	if (disabled_log_messages == PETSC_FALSE) {
 		PetscPrintf(PETSC_COMM_WORLD,"periodic boundary: done\n");
 	}
 

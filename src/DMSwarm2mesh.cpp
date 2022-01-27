@@ -36,7 +36,7 @@ extern PetscInt periodic_boundary;
 
 extern double visc_MIN;
 
-extern PetscBool log_messages;
+extern PetscBool disabled_log_messages;
 
 PetscErrorCode Swarm2Mesh(){
 
@@ -111,26 +111,26 @@ PetscErrorCode Swarm2Mesh(){
 
 		cx = array[2*p];
 		if (cx>=Lx) {
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				printf("Swarm2Mesh - outside: cx=%lf>=%lf\n",cx,Lx);
 			}
 			cx=Lx-epsilon_x;
 		}
 		if (cx<=0.0) {
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				printf("Swarm2Mesh - outside: cx=%lf<=0.0\n",cx);
 			}
 			cx=epsilon_x;
 		}
 		cz = array[2*p+1];
 		if (cz>=0){
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				printf("Swarm2Mesh - outside: cz=%lf>=0.0\n",cz);
 			}
 			cz=-epsilon_x;
 		}
 		if (cz<=-depth){
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				printf("Swarm2Mesh - outside: cz=%lf<=-%lf\n",cz,depth);
 			}
 			cz=-depth+epsilon_x;
@@ -195,26 +195,26 @@ PetscErrorCode Swarm2Mesh(){
 
 				cx = array[2*p];
 				if (cx>=Lx) {
-					if (log_messages) {
+					if (disabled_log_messages == PETSC_FALSE) {
 						printf("Swarm2Mesh visc_harmonic_mean 1 - outside: cx=%lf>=%lf\n",cx,Lx);
 					}
 					cx=Lx-epsilon_x;
 				}
 				if (cx<=0.0) {
-					if (log_messages) {
+					if (disabled_log_messages == PETSC_FALSE) {
 						printf("Swarm2Mesh visc_harmonic_mean 1 - outside: cx=%lf<=0.0\n",cx);
 					}
 					cx=epsilon_x;
 				}
 				cz = array[2*p+1];
 				if (cz>=0){
-					if (log_messages) {
+					if (disabled_log_messages == PETSC_FALSE) {
 						printf("Swarm2Mesh visc_harmonic_mean 1 - outside: cz=%lf>=0.0\n",cz);
 					}
 					cz=-epsilon_x;
 				}
 				if (cz<=-depth){
-					if (log_messages) {
+					if (disabled_log_messages == PETSC_FALSE) {
 						printf("Swarm2Mesh visc_harmonic_mean 1 - outside: cz=%lf<=-%lf\n",cz,depth);
 					}
 					cz=-depth+epsilon_x;
@@ -258,26 +258,26 @@ PetscErrorCode Swarm2Mesh(){
 
 				cx = array[2*p];
 				if (cx>=Lx) {
-					if (log_messages) {
+					if (disabled_log_messages == PETSC_FALSE) {
 						printf("Swarm2Mesh visc_harmonic_mean 0 - outside: cx=%lf>=%lf\n",cx,Lx);
 					}
 					cx=Lx-epsilon_x;
 				}
 				if (cx<=0.0) {
-					if (log_messages) {
+					if (disabled_log_messages == PETSC_FALSE) {
 						printf("Swarm2Mesh visc_harmonic_mean 0 - outside: cx=%lf<=0.0\n",cx);
 					}
 					cx=epsilon_x;
 				}
 				cz = array[2*p+1];
 				if (cz>=0){
-					if (log_messages) {
+					if (disabled_log_messages == PETSC_FALSE) {
 						printf("Swarm2Mesh visc_harmonic_mean 0 - outside: cz=%lf>=0.0\n",cz);
 					}
 					cz=-epsilon_x;
 				}
 				if (cz<=-depth){
-					if (log_messages) {
+					if (disabled_log_messages == PETSC_FALSE) {
 						printf("Swarm2Mesh visc_harmonic_mean 0 - outside: cz=%lf<=-%lf\n",cz,depth);
 					}
 					cz=-depth+epsilon_x;

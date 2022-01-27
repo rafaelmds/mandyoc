@@ -59,9 +59,9 @@ int main(int argc,char **args)
 
 	ierr = PetscInitialize(&argc,&args,(char*)0,help);CHKERRQ(ierr);
 
-	ierr = PetscOptionsHasName(NULL,NULL,"-log_messages",&log_messages);
+	ierr = PetscOptionsHasName(NULL,NULL,"-disable_log_messages",&disabled_log_messages);
 
-	if (log_messages) {
+	if (disabled_log_messages == PETSC_FALSE) {
 		PetscPrintf(PETSC_COMM_WORLD,"           __  __              _   _   _____   __     __   ____     _____ \n");
 		PetscPrintf(PETSC_COMM_WORLD,"          |  \\/  |     /\\     | \\ | | |  __ \\  \\ \\   / /  / __ \\   / ____|\n");
 		PetscPrintf(PETSC_COMM_WORLD,"          | \\  / |    /  \\    |  \\| | | |  | |  \\ \\_/ /  | |  | | | |     \n");
@@ -76,7 +76,7 @@ int main(int argc,char **args)
 	}
 
 	#ifndef GIT_VERSION
-	if (log_messages) {
+	if (disabled_log_messages == PETSC_FALSE) {
 		ierr = PetscPrintf(PETSC_COMM_WORLD, "*** Git version: %s ***\n\n", GIT_VERSION);CHKERRQ(ierr);
 	}
 	#endif
@@ -84,7 +84,7 @@ int main(int argc,char **args)
 	PetscBool flags;
 	ierr = PetscOptionsHasName(NULL,NULL,"-flags",&flags);
 	if (flags){
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD,"%s",help);
 		}
 		exit(1);
@@ -124,22 +124,22 @@ int main(int argc,char **args)
 			exit(1);
 		}
 		if (strain_seed_layer_set == PETSC_FALSE && seed_layer_set == PETSC_TRUE) {
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				PetscPrintf(PETSC_COMM_WORLD,"Using default value '2.0' for -strain_seed (for all seed layers)\n");
 			}
 			for (int k = 0; k < seed_layer_size; k++) {
 				strain_seed_layer[k] = 2.0;
 			}
 		}
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD,"Number of seed layers: %d\n", seed_layer_size);
 		}
 		for (int k = 0; k < seed_layer_size; k++) {
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				PetscPrintf(PETSC_COMM_WORLD,"seed layer: %d - strain: %lf\n", seed_layer[k], strain_seed_layer[k]);
 			}
 		}
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD,"\n");
 		}
 	}
@@ -158,19 +158,19 @@ int main(int argc,char **args)
 
 
 	if (sp_mode == 2 && PETSC_FALSE == set_sp_d_c) {
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			ierr = PetscPrintf(PETSC_COMM_WORLD,"-sp_mode 2 (diffusion) using default value: sp_d_c %e\n", sp_d_c); CHKERRQ(ierr);
 		}
 	} else if (sp_mode == 2) {
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			ierr = PetscPrintf(PETSC_COMM_WORLD,"-sp_mode 2 (diffusion) using custom value: sp_d_c %e\n", sp_d_c); CHKERRQ(ierr);
 		}
 	} else if (sp_mode == 3) {
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			ierr = PetscPrintf(PETSC_COMM_WORLD,"-sp_mode 3 (fluvial erosion) using K_fluvial: %e and sea_level %e\n", K_fluvial,sea_level); CHKERRQ(ierr);
 		}
 	}else if (sp_mode == 4) {
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			ierr = PetscPrintf(PETSC_COMM_WORLD,"-sp_mode 4 (fluvial erosion mode 2) using K_fluvial: %e and sea_level %e\n", K_fluvial,sea_level); CHKERRQ(ierr);
 		}
 	}
@@ -188,11 +188,11 @@ int main(int argc,char **args)
 	ierr = create_veloc_2d(Nx-1,Nz-1,Px,Pz);CHKERRQ(ierr);
 
 	if (geoq_on){
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD,"\nSwarm (creating)\n");
 		}
 		ierr = createSwarm();CHKERRQ(ierr);
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD,"Swarm: done\n");
 		}
 	}
@@ -202,11 +202,11 @@ int main(int argc,char **args)
 
 	// Surface Processes Swarm
 	if (geoq_on && sp_surface_tracking && n_interfaces>0 && interfaces_from_ascii==1) {
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD, "\nSP Swarm (creating)\n");
 		}
 		ierr = sp_create_surface_vec(); CHKERRQ(ierr);
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD, "SP Swarm: done\n");
 		}
 		ierr = sp_interpolate_surface_particles_to_vec(); CHKERRQ(ierr);
@@ -223,7 +223,7 @@ int main(int argc,char **args)
 		visc_MIN_comp = visc_mean;
 		visc_MAX_comp = visc_mean;
 
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD,"\n\nViscosity range: %.3lg %.3lg\n\n",visc_MIN_comp,visc_MAX_comp);
 		}
 
@@ -237,7 +237,7 @@ int main(int argc,char **args)
 			if (visc_MIN_comp<visc_MIN) visc_MIN_comp=visc_MIN;
 			if (visc_MAX_comp>visc_MAX) visc_MAX_comp=visc_MAX;
 
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				PetscPrintf(PETSC_COMM_WORLD,"\n\nViscosity range: %.3lg %.3lg\n\n",visc_MIN_comp,visc_MAX_comp);
 			}
 
@@ -253,7 +253,7 @@ int main(int argc,char **args)
 		ierr = veloc_total(); CHKERRQ(ierr);
 	}
 
-	if (log_messages) {
+	if (disabled_log_messages == PETSC_FALSE) {
 		PetscPrintf(PETSC_COMM_WORLD,"Solution of the pressure and velocity fields: done\n");
 	}
 
@@ -277,14 +277,14 @@ int main(int argc,char **args)
 		print_step_aux = print_step;
 		print_step = initial_print_step;
 
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD, "\n\n*** Using custom initial print_step = %d until %.3g Myr\n\n", print_step, initial_print_max_time);
 		}
 	}
 
 	if (sp_surface_processes && PETSC_FALSE == set_sp_dt) {
 		sp_dt = 10.0 * dt_calor;
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD, "\n\n*** Using default sp_dt\n\n");
 		}
 	}
@@ -296,12 +296,12 @@ int main(int argc,char **args)
 		if ((tempo > initial_print_max_time || fabs(tempo-initial_print_max_time) < 0.0001) && initial_print_step > 0) {
 			initial_print_step = 0;
 			print_step = print_step_aux;
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				PetscPrintf(PETSC_COMM_WORLD, "\n\n*** Restored print_step = %d\n\n", print_step);
 			}
 		}
 
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD,"\n\nstep = %d, time = %.3g yr, dt = %.3g yr\n",tcont,tempo,dt_calor);
 		}
 
@@ -317,7 +317,7 @@ int main(int argc,char **args)
 		ierr = veloc_total(); CHKERRQ(ierr);
 
 		if (sp_surface_processes && geoq_on && n_interfaces>0 && interfaces_from_ascii==1 && (tempo > sp_eval_time || fabs(tempo-sp_eval_time) < 0.0001)) {
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				PetscPrintf(PETSC_COMM_WORLD,"\nEvaluating sp...\n");
 			}
 
@@ -457,18 +457,18 @@ PetscErrorCode rescaleVeloc(Vec Veloc_fut,double tempo)
 		if (tempo>1.0E6*var_bcv_time[cont_var_bcv]){
 			PetscScalar v_norm;
 			VecNorm(Veloc_fut,NORM_1,&v_norm);
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				PetscPrintf(PETSC_COMM_WORLD,"v_norm = %lf\n\n",v_norm);
 			}
 			VecScale(Veloc_fut,var_bcv_scale[cont_var_bcv]);
 			VecScale(Veloc_0,var_bcv_scale[cont_var_bcv]);
 			cont_var_bcv++;
 			VecNorm(Veloc_fut,NORM_1,&v_norm);
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				PetscPrintf(PETSC_COMM_WORLD,"v_norm = %lf\n\n",v_norm);
 			}
 
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				PetscPrintf(PETSC_COMM_WORLD,"velocity rescale\n\n");
 			}
 
@@ -482,7 +482,7 @@ PetscErrorCode rescaleVeloc(Vec Veloc_fut,double tempo)
 				visc_MIN_comp = visc_mean;
 				visc_MAX_comp = visc_mean;
 
-				if (log_messages) {
+				if (disabled_log_messages == PETSC_FALSE) {
 					PetscPrintf(PETSC_COMM_WORLD,"\n\nViscosity range: %.3lg %.3lg\n\n",visc_MIN_comp,visc_MAX_comp);
 				}
 
@@ -496,7 +496,7 @@ PetscErrorCode rescaleVeloc(Vec Veloc_fut,double tempo)
 					if (visc_MIN_comp<visc_MIN) visc_MIN_comp=visc_MIN;
 					if (visc_MAX_comp>visc_MAX) visc_MAX_comp=visc_MAX;
 
-					if (log_messages) {
+					if (disabled_log_messages == PETSC_FALSE) {
 						PetscPrintf(PETSC_COMM_WORLD,"\n\nViscosity range: %.3lg %.3lg\n\n",visc_MIN_comp,visc_MAX_comp);
 					}
 
@@ -527,7 +527,7 @@ PetscErrorCode multi_veloc_change(Vec Veloc_fut,double tempo){
 				visc_MIN_comp = visc_mean;
 				visc_MAX_comp = visc_mean;
 
-				if (log_messages) {
+				if (disabled_log_messages == PETSC_FALSE) {
 					PetscPrintf(PETSC_COMM_WORLD,"\n\nViscosity range: %.3lg %.3lg\n\n",visc_MIN_comp,visc_MAX_comp);
 				}
 
@@ -541,7 +541,7 @@ PetscErrorCode multi_veloc_change(Vec Veloc_fut,double tempo){
 					if (visc_MIN_comp<visc_MIN) visc_MIN_comp=visc_MIN;
 					if (visc_MAX_comp>visc_MAX) visc_MAX_comp=visc_MAX;
 
-					if (log_messages) {
+					if (disabled_log_messages == PETSC_FALSE) {
 						PetscPrintf(PETSC_COMM_WORLD,"\n\nViscosity range: %.3lg %.3lg\n\n",visc_MIN_comp,visc_MAX_comp);
 					}
 

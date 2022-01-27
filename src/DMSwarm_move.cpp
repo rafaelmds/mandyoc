@@ -70,7 +70,7 @@ extern PetscInt RK4;
 
 extern PetscInt periodic_boundary;
 
-extern PetscBool log_messages;
+extern PetscBool disabled_log_messages;
 
 
 PetscReal linear_interpolation(PetscReal rx, PetscReal rz,PetscScalar V0, PetscScalar V1, PetscScalar V2, PetscScalar V3){
@@ -258,13 +258,13 @@ PetscErrorCode moveSwarm(PetscReal dt)
 		else {
 			cx = array[2*p];
 			if (cx>=Lx) {
-				if (log_messages) {
+				if (disabled_log_messages == PETSC_FALSE) {
 					printf("moveSwarm - outside: cx=%lf>=%lf\n",cx,Lx);
 				}
 				cx=Lx-epsilon_x;
 			}
 			if (cx<=0.0) {
-				if (log_messages) {
+				if (disabled_log_messages == PETSC_FALSE) {
 					printf("moveSwarm - outside: cx=%lf<=0.0\n",cx);
 				}
 				cx=epsilon_x;
@@ -272,13 +272,13 @@ PetscErrorCode moveSwarm(PetscReal dt)
 
 			cz = array[2*p+1];
 			if (cz>=0){
-				if (log_messages) {
+				if (disabled_log_messages == PETSC_FALSE) {
 					printf("moveSwarm - outside: cz=%lf>=0.0\n",cz);
 				}
 				cz=-epsilon_x;
 			}
 			if (cz<=-depth){
-				if (log_messages) {
+				if (disabled_log_messages == PETSC_FALSE) {
 					printf("moveSwarm - outside: cz=%lf<=-%lf\n",cz,depth);
 				}
 				cz=-depth+epsilon_x;
@@ -443,13 +443,13 @@ PetscErrorCode Swarm_add_remove()
 
 		cx = array[2*p];
 		if (cx>=Lx) {
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				printf("Swarm_add_remove - outside: cx=%lf>=%lf\n",cx,Lx);
 			}
 			cx=Lx-epsilon_x;
 		}
 		if (cx<=0.0) {
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				printf("Swarm_add_remove - outside: cx=%lf<=0.0\n",cx);
 			}
 			cx=epsilon_x;
@@ -457,13 +457,13 @@ PetscErrorCode Swarm_add_remove()
 
 		cz = array[2*p+1];
 		if (cz>=0){
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				printf("Swarm_add_remove - outside: cz=%lf>=0.0\n",cz);
 			}
 			cz=-epsilon_x;
 		}
 		if (cz<=-depth){
-			if (log_messages) {
+			if (disabled_log_messages == PETSC_FALSE) {
 				printf("Swarm_add_remove - outside: cz=%lf<=-%lf\n",cz,depth);
 			}
 			cz=-depth+epsilon_x;
@@ -687,7 +687,7 @@ PetscErrorCode Swarm_add_remove()
 	}
 
 	ierr = DMSwarmGetLocalSize(dms,&nlocal);CHKERRQ(ierr);
-	if (log_messages) {
+	if (disabled_log_messages == PETSC_FALSE) {
 		PetscPrintf(PETSC_COMM_WORLD,"Swarm advection: done\n\n");
 	}
 

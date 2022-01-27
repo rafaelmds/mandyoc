@@ -94,7 +94,7 @@ extern double kappa;
 extern double RHOM;
 extern double c_heat_capacity;
 
-extern PetscBool log_messages;
+extern PetscBool disabled_log_messages;
 
 PetscErrorCode create_thermal_2d(PetscInt mx,PetscInt mz,PetscInt Px,PetscInt Pz)
 {
@@ -252,7 +252,7 @@ PetscErrorCode create_thermal_2d(PetscInt mx,PetscInt mz,PetscInt Px,PetscInt Pz
 
 	PetscTime(&Tempo2p);
 	if (rank==0)
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			printf("temperature (creation): %lf s\n",Tempo2p-Tempo1p);
 		}
 
@@ -286,7 +286,7 @@ PetscErrorCode build_thermal_3d()
 
 	PetscTime(&Tempo2p);
 	if (rank==0)
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			printf("Thermal (building): %lf s\n",Tempo2p-Tempo1p);
 		}
 
@@ -323,7 +323,7 @@ PetscErrorCode solve_thermal_3d()
 
 	PetscTime(&Tempo2);
 	if (rank==0)
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			printf("Thermal (solution): %lf s\n",Tempo2-Tempo1);
 		}
 
@@ -415,7 +415,7 @@ PetscErrorCode destroy_thermal_()
 
 	PetscTime(&Tempo2);
 	if (rank==0)
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			printf("Thermal (destroying): %lf\n",Tempo2-Tempo1);
 		}
 
@@ -449,7 +449,7 @@ PetscErrorCode write_all_(int cont,Vec u, char *variable_name, PetscInt binary_o
 
 	PetscTime(&Tempo2);
 	if (rank==0)
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			printf("%s (writing): %lf s\n",variable_name,Tempo2-Tempo1);
 		}
 

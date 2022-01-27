@@ -112,7 +112,7 @@ extern PetscReal theta_FSSA;
 
 extern PetscInt periodic_boundary;
 
-extern PetscBool log_messages;
+extern PetscBool disabled_log_messages;
 
 PetscErrorCode AssembleA_Veloc(Mat A,Mat AG,DM veloc_da, DM temper_da){
 
@@ -641,7 +641,7 @@ PetscErrorCode Init_Veloc(){
 		sprintf(s1,"input_velocity_%d.txt",i_veloc);
 		sprintf(s2,"veloc_init.bin");
 
-		if (log_messages) {
+		if (disabled_log_messages == PETSC_FALSE) {
 			PetscPrintf(PETSC_COMM_WORLD,"Reading %s\n",s1);
 		}
 

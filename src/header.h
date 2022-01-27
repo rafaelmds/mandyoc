@@ -344,4 +344,4 @@ PetscScalar *var_climate_scale;
 PetscInt n_var_climate;
 PetscInt cont_var_climate=0;
 
-PetscBool log_messages = PETSC_TRUE;
+PetscBool disabled_log_messages = PETSC_FALSE;
