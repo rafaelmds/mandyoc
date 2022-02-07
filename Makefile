@@ -38,7 +38,7 @@ help:
 test:
 	@echo "Run MANDYOC test may take several minutes.."
 	cd tests/testing_data/ ; ${MPIEXEC} -n 2 ../../mandyoc
-	pytest -v test/testing_result.py
+	pytest -v tests/testing_result.py
 
 # Build Mandyoc
 all: ${OBJECTS} chkopts
