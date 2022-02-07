@@ -64,4 +64,4 @@ jobs:
       - name: Load image
         run: |
           docker load --input /tmp/mandyoc.tar
-          docker run --rm -it rafaelmds/mandyoc:latest bash -c 'make test'
+          docker run --rm -it mandyoc:latest bash -c 'make test'
