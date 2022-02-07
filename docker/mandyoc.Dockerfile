@@ -17,17 +17,23 @@ ENV PETSC_VERSION 3.15.0
 ENV PETSC_DIR /home/petsc-${PETSC_VERSION}
 ENV PETSC_ARCH optimized-${PETSC_VERSION}
 ENV MANDYOC_DIR /home/mandyoc
-ENV WORKDIR /home/simulation
+
+# =============================================================================
+# Prepare
+# =============================================================================
+WORKDIR ${MANDYOC_DIR}
+
+COPY . .
 
 # =============================================================================
 # Building MANDYOC
 # =============================================================================
-RUN git clone https://github.com/ggciag/mandyoc ${MANDYOC_DIR} && \
-    cd ${MANDYOC_DIR} && \
-    make all && \
+RUN make all && \
     cp mandyoc /usr/local/bin
 
 # =============================================================================
-# Final setup
+# Installing python test requirements
 # =============================================================================
-WORKDIR /simulation
+RUN if [ -f env/requirements-test.txt ]; \
+        then pip3 install -r env/requirements-test.txt; \
+    fi
