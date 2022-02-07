@@ -6,7 +6,7 @@
 # MANDYOC is hosted at https://github.com/ggciag/mandyoc.
 #
 
-FROM debian:10 AS base_stage
+FROM ubuntu:20.04 AS base_stage
 
 LABEL maintainer "Rafael Silva <rafael.m.silva@alumni.usp.br>"
 
@@ -17,6 +17,8 @@ ENV PETSC_VERSION 3.15.0
 ENV PETSC_DIR /home/petsc-${PETSC_VERSION}
 ENV PETSC_ARCH optimized-${PETSC_VERSION}
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # =============================================================================
 # Install dependencies
 # =============================================================================
@@ -26,7 +28,11 @@ RUN apt-get update && \
         cmake \
         gcc \
         gfortran \
-        python \
+        python3 \
+        python3-dev \
+        python3-distutils \
+        python3-pip \
+        python3-setuptools \
         vim \
         nano \
         git \
@@ -37,7 +43,8 @@ RUN apt-get update && \
         openssh-client \
         openssh-server && \
     apt-get clean && \
-    apt-get autoremove; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+    apt-get autoremove && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
     update-ca-certificates
 
 # =============================================================================
@@ -48,11 +55,8 @@ FROM base_stage AS petsc_stage
 RUN curl -k https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-lite-${PETSC_VERSION}.tar.gz \
         | tar xzvf - -C $(dirname ${PETSC_DIR}) && \
     cd ${PETSC_DIR} && \
-    ./configure PETSC_DIR=${PETSC_DIR} PETSC_ARCH=${PETSC_ARCH} \
+    python3 ./configure PETSC_DIR=${PETSC_DIR} PETSC_ARCH=${PETSC_ARCH} \
         --with-debugging=0 \
-        COPTFLAGS="-O3 -march=native -mtune=native" \
-        CXXOPTFLAGS="-O3 -march=native -mtune=native" \
-        FOPTFLAGS="-O3 -march=native -mtune=native" \
         --with-cc=gcc \
         --with-cxx=g++ \
         --with-fc=gfortran \
@@ -62,6 +66,5 @@ RUN curl -k https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-lite-${PET
         --download-metis \
         --download-parmetis \
         --download-mumps \
-        --download-scalapack \
-        --download-hdf5 && \
+        --download-scalapack && \
     make PETSC_DIR=${PETSC_DIR} PETSC_ARCH=${PETSC_ARCH} all
