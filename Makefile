@@ -35,9 +35,9 @@ help:
 	@echo ""
 
 # Run test
-test_mandyoc:
+test:
 	@echo "Run MANDYOC test may take several minutes.."
-	cd test/testing_data/ ; ${MPIEXEC} -n 2 ../../mandyoc
+	cd tests/testing_data/ ; ${MPIEXEC} -n 2 ../../mandyoc
 	pytest -v test/testing_result.py
 
 # Build Mandyoc

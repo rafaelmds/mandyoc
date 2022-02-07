@@ -1,24 +1,26 @@
 mandyoc
-test/__pycache__/
 
 # Ignore _build folder
 _build
 # Ignore the documentation building folder
 docs/_build
 
+# Ignore tests folder
+tests/__pycache__/
+
 # Ignore output when run the test 
-test/testing_data/density_* 
-test/testing_data/heat_*
-test/testing_data/pressure_*
-test/testing_data/strain_*
-test/testing_data/strain_rate_*
-test/testing_data/temperature_*
-test/testing_data/sp_surface_global_*
-test/testing_data/viscosity_*
-test/testing_data/step_*
-test/testing_data/time_*
-test/testing_data/bc_*
-test/testing_data/velocity_*
+tests/testing_data/density_* 
+tests/testing_data/heat_*
+tests/testing_data/pressure_*
+tests/testing_data/strain_*
+tests/testing_data/strain_rate_*
+tests/testing_data/temperature_*
+tests/testing_data/sp_surface_global_*
+tests/testing_data/viscosity_*
+tests/testing_data/step_*
+tests/testing_data/time_*
+tests/testing_data/bc_*
+tests/testing_data/velocity_*
 
 .vscode/
 .DS_store
