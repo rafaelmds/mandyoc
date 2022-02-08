@@ -24,13 +24,24 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+env:
+  TEST_TAG: ggciag/mandyoc:test
+
 jobs:
   # Build the docker image and run tests
   test:
     runs-on: ubuntu-latest
 
     steps:
-      # Cache layer
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
       - name: Cache Docker layers
         uses: actions/cache@v2
         with:
@@ -39,34 +50,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
-      # Checks-out your repository under $GITHUB_WORKSPACE
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          # Need to fetch more than the last commit so that setuptools-scm can
-          # create the correct version string. If the number of commits since
-          # the last release is greater than this, the version still be wrong.
-          # Increase if necessary.
-          fetch-depth: 100
-          # The GitHub token is preserved by default but this job doesn't need
-          # to be able to push to GitHub.
-          persist-credentials: false
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Build and export
-        id: docker_build
+      - name: Build and export to Docker
         uses: docker/build-push-action@v2
         with:
           context: .
           file: docker/mandyoc.Dockerfile
-          tags: mandyoc:latest
+          load: true
+          tags: ${{ env.TEST_TAG }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
-      - name: Run tests
+      - name: Test
         run: |
-          docker run --rm mandyoc:latest bash -c 'make test'
+          docker run --rm ${{ env.TEST_TAG }} bash -c 'make test'
+
+        # Temp fix
+        # https://github.com/docker/build-push-action/issues/252
+        # https://github.com/moby/buildkit/issues/1896
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
