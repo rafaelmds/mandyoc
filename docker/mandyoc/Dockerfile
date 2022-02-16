@@ -29,18 +29,18 @@ ENV MANDYOC_DIR ${HOME}/mandyoc
 # =============================================================================
 COPY --chown=${USER}:${USER} . ${MANDYOC_DIR}
 
-RUN cd ${MANDYOC_DIR} && \
-    make all
-
-USER root
-RUN  cp ${MANDYOC_DIR}/mandyoc /usr/local/bin
+RUN mkdir -p ${HOME}/.local/bin && \
+    cd ${MANDYOC_DIR} && \
+    make clear && \
+    make install
 
 # =============================================================================
 # Final setup
 # =============================================================================
 FROM mandyoc_stage
 
-ENV MANDYOC /usr/local/bin/mandyoc
+ENV PATH="${HOME}/.local/bin:${PATH}"
+ENV MANDYOC ${HOME}/.local/bin/mandyoc
 
 USER ${USER}
 

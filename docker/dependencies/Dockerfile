@@ -111,6 +111,7 @@ RUN chown -R ${USER}:${USER} ${HOME}
 
 ENV PETSC_DIR ${HOME}/petsc-${PETSC_VERSION}
 ENV MPIEXEC ${PETSC_DIR}/bin/mpiexec
+ENV PATH="${PETSC_DIR}/bin:${PATH}"
 
 USER ${USER}
 
