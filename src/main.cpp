@@ -7,6 +7,8 @@ static char help[] = "\n\nMANDYOC: MANtle DYnamics simulatOr Code\n\n"\
 "   -strain_seed_constant [bool]: specify if the strain_seed value is used as a constant value (default)\n"\
 "                                 or if it is summed over the random initial strain\n"\
 "                                 default value: true\n\n"\
+"   -seed_gy [float]:             specify one (or more, comma separated) layer to apply a gaussian distribution\n"\
+"                                 default value: no value specified\n\n"\
 "";
 
 /* MANDYOC: MANtle DYnamics simulatOr Code*/

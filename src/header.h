@@ -326,6 +326,10 @@ PetscBool strain_seed_layer_set = PETSC_FALSE;
 PetscBool strain_seed_constant = PETSC_TRUE;
 PetscBool strain_seed_constant_set = PETSC_FALSE;
 
+PetscInt *gaussian_seed_layer_y;
+PetscInt gaussian_seed_layer_y_size;
+PetscBool gaussian_seed_layer_y_set = PETSC_FALSE;
+
 PetscScalar *var_bcv_time;
 PetscScalar *var_bcv_scale;
 PetscInt n_var_bcv=0;

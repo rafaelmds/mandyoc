@@ -68,6 +68,10 @@ extern PetscReal *strain_seed_layer;
 extern PetscInt strain_seed_layer_size;
 extern PetscBool strain_seed_layer_set;
 
+extern PetscInt *gaussian_seed_layer_y;
+extern PetscInt gaussian_seed_layer_y_size;
+extern PetscBool gaussian_seed_layer_y_set;
+
 extern PetscInt checkered;
 
 extern PetscBool plot_sediment;
@@ -426,7 +430,6 @@ PetscErrorCode createSwarm_2d()
 
 					rfac = (rx);
 					interp_interfaces[in] += interfaces[(i+1) + Nx*in] * rfac;
-
 				}
 
 				verif=0;
@@ -445,28 +448,77 @@ PetscErrorCode createSwarm_2d()
 				rand_r(&seed_strain);
 				strain_array[p]=random_initial_strain*(float)rand_r(&seed_strain)/RAND_MAX;
 
+				PetscReal cz_min;
+				PetscReal cz_max;
+				PetscReal _cz_interp;
+				PetscReal _var;
+
 				if (seed_layer_set == PETSC_TRUE) {
-					if (seed_layer_size == 1 && layer_array[p] == seed_layer[0]) {
+					for (int l = 0; l < seed_layer_size && seed_layer[l] == layer_array[p]; l++) {
 						if (strain_seed_constant == PETSC_TRUE) {
-							strain_array[p] = strain_seed_layer[0];
-						} else {
-							strain_array[p] += strain_seed_layer[0];
-						}
-					}
-					else {
-						for (int k = 0; k < seed_layer_size; k++) {
-							if (layer_array[p] == seed_layer[k]) {
-								if (strain_seed_constant == PETSC_TRUE) {
-									strain_array[p] = strain_seed_layer[k];
-								} else {
-									strain_array[p] += strain_seed_layer[k];
+							if (gaussian_seed_layer_y_set == PETSC_TRUE) {
+								for (int m = 0; m < gaussian_seed_layer_y_size && gaussian_seed_layer_y[m] == seed_layer[l]; m++) {
+									if (gaussian_seed_layer_y[m] == 0) {
+										cz_min = depth;
+										cz_max = interp_interfaces[0];
+									} else if (gaussian_seed_layer_y[m] == n_interfaces) {
+										cz_min = interp_interfaces[n_interfaces - 1];
+										cz_max = 0;
+									} else {
+										cz_min = interp_interfaces[gaussian_seed_layer_y[m] - 1];
+										cz_max = interp_interfaces[gaussian_seed_layer_y[m]];
+									}
+
+									_cz_interp = (cz - cz_min) / PetscAbs(cz_max - cz_min);
+									_var = 0.02;
+
+									strain_array[p] = strain_seed_layer[l] * PetscExpReal((-0.5*PetscPowReal(_cz_interp-0.5, 2))/_var) / (PetscSqrtReal(2*PETSC_PI)*_var) / 19.947114020071638;
+
+									// PetscPrintf(PETSC_COMM_SELF,"[%d] GAUSSIAN p = % 8d cz=%lf seed_layer[%d] = %d strain_seed_layer = %lf strain_array = %lf\n", rank, p, cz, l, seed_layer[l], strain_seed_layer[l], strain_array[p]);
+
+									break;
 								}
+							} else {
+								strain_array[p] = strain_seed_layer[l];
 							}
+
+							// if (seed_layer[l] == 3) {
+							// 	PetscPrintf(PETSC_COMM_SELF,"[%d] GAUSSIAN p = % 8d cz=%lf seed_layer[%d] = %d strain_seed_layer = %lf strain_array = %lf\n", rank, p, cz, l, seed_layer[l], strain_seed_layer[l], strain_array[p]);
+							// }
+						} else {
+							if (gaussian_seed_layer_y_set == PETSC_TRUE) {
+								for (int m = 0; m < gaussian_seed_layer_y_size && gaussian_seed_layer_y[m] == seed_layer[l]; m++) {
+									if (gaussian_seed_layer_y[m] == 0) {
+										cz_min = depth;
+										cz_max = interp_interfaces[0];
+									} else if (gaussian_seed_layer_y[m] == n_interfaces) {
+										cz_min = interp_interfaces[n_interfaces - 1];
+										cz_max = 0;
+									} else {
+										cz_min = interp_interfaces[gaussian_seed_layer_y[m] - 1];
+										cz_max = interp_interfaces[gaussian_seed_layer_y[m]];
+									}
+
+									_cz_interp = (cz - cz_min) / PetscAbs(cz_max - cz_min);
+									_var = 0.02;
+
+									strain_array[p] += strain_seed_layer[l] * PetscExpReal((-0.5*PetscPowReal(_cz_interp-0.5, 2))/_var) / (PetscSqrtReal(2*PETSC_PI)*_var) / 19.947114020071638;
+
+									// PetscPrintf(PETSC_COMM_SELF,"[%d] GAUSSIAN p = % 8d cz=%lf seed_layer[%d] = %d strain_seed_layer = %lf strain_array = %lf\n", rank, p, cz, l, seed_layer[l], strain_seed_layer[l], strain_array[p]);
+
+									break;
+								}
+							} else {
+								strain_array[p] += strain_seed_layer[l];
+							}
+
+							// if (seed_layer[l] == 3) {
+							// 	PetscPrintf(PETSC_COMM_SELF,"[%d] GAUSSIAN p = % 8d cz=%lf seed_layer[%d] = %d strain_seed_layer = %lf strain_array = %lf\n", rank, p, cz, l, seed_layer[l], strain_seed_layer[l], strain_array[p]);
+							// }
+
 						}
 					}
 				}
-
-
 			}
 		}
 

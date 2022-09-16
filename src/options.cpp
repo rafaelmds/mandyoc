@@ -13,6 +13,9 @@ extern PetscInt strain_seed_layer_size;
 extern PetscBool strain_seed_layer_set;
 extern PetscBool strain_seed_constant;
 extern PetscBool strain_seed_constant_set;
+extern PetscInt *gaussian_seed_layer_y;
+extern PetscInt gaussian_seed_layer_y_size;
+extern PetscBool gaussian_seed_layer_y_set;
 extern double h_air;;
 extern PetscInt pressure_in_rheol;
 extern PetscBool sp_surface_processes;
@@ -56,9 +59,28 @@ PetscErrorCode parse_options(int rank)
 				strain_seed_layer[k] = 0.5;
 			}
 		}
+
+		gaussian_seed_layer_y_size = seed_layer_size;
+
+		ierr = PetscCalloc1(gaussian_seed_layer_y_size, &gaussian_seed_layer_y); CHKERRQ(ierr);
+
+		ierr = PetscOptionsGetIntArray(NULL, NULL, "-seed_gy", gaussian_seed_layer_y, &gaussian_seed_layer_y_size, &gaussian_seed_layer_y_set); CHKERRQ(ierr);
+		if (seed_layer_set == PETSC_TRUE && gaussian_seed_layer_y_set == PETSC_TRUE && seed_layer_size < gaussian_seed_layer_y_size) {
+			PetscPrintf(PETSC_COMM_WORLD, "The number of values in the list for -seed_gy must be equal or less than the number of values in -seed\n");
+			exit(1);
+		}
+		if (gaussian_seed_layer_y_set == PETSC_TRUE && seed_layer_set == PETSC_FALSE) {
+			PetscPrintf(PETSC_COMM_WORLD, "Specify the seed layer with the flag -seed (required by -seed_gy)\n");
+			exit(1);
+		}
+
 		PetscPrintf(PETSC_COMM_WORLD, "Number of seed layers: %d\n", seed_layer_size);
 		for (int k = 0; k < seed_layer_size; k++) {
-			PetscPrintf(PETSC_COMM_WORLD, "seed layer: %d - strain: %lf\n", seed_layer[k], strain_seed_layer[k]);
+			PetscPrintf(PETSC_COMM_WORLD, "seed layer: %d - strain: %lf", seed_layer[k], strain_seed_layer[k]);
+			for (int g = 0; gaussian_seed_layer_y_set == PETSC_TRUE && g < gaussian_seed_layer_y_size && gaussian_seed_layer_y[g] == seed_layer[k]; g++) {
+				PetscPrintf(PETSC_COMM_WORLD, " - gaussian");
+			}
+			PetscPrintf(PETSC_COMM_WORLD, "\n");
 		}
 		PetscPrintf(PETSC_COMM_WORLD, "\n");
 
