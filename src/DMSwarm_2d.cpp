@@ -452,70 +452,68 @@ PetscErrorCode createSwarm_2d()
 				PetscReal cz_max;
 				PetscReal _cz_interp;
 				PetscReal _var;
+				PetscBool _g_applied = PETSC_FALSE;
 
 				if (seed_layer_set == PETSC_TRUE) {
-					for (int l = 0; l < seed_layer_size && seed_layer[l] == layer_array[p]; l++) {
-						if (strain_seed_constant == PETSC_TRUE) {
-							if (gaussian_seed_layer_y_set == PETSC_TRUE) {
-								for (int m = 0; m < gaussian_seed_layer_y_size && gaussian_seed_layer_y[m] == seed_layer[l]; m++) {
-									if (gaussian_seed_layer_y[m] == 0) {
-										cz_min = depth;
-										cz_max = interp_interfaces[0];
-									} else if (gaussian_seed_layer_y[m] == n_interfaces) {
-										cz_min = interp_interfaces[n_interfaces - 1];
-										cz_max = 0;
-									} else {
-										cz_min = interp_interfaces[gaussian_seed_layer_y[m] - 1];
-										cz_max = interp_interfaces[gaussian_seed_layer_y[m]];
+					for (int l = 0; l < seed_layer_size; l++) {
+						if (seed_layer[l] == layer_array[p]) {
+							if (strain_seed_constant == PETSC_TRUE) {
+								_g_applied = PETSC_FALSE;
+								for (int m = 0; gaussian_seed_layer_y_set == PETSC_TRUE && m < gaussian_seed_layer_y_size; m++) {
+									if (gaussian_seed_layer_y[m] == seed_layer[l]) {
+										if (gaussian_seed_layer_y[m] == 0) {
+											cz_min = depth;
+											cz_max = interp_interfaces[0];
+										} else if (gaussian_seed_layer_y[m] == n_interfaces) {
+											cz_min = interp_interfaces[n_interfaces - 1];
+											cz_max = 0;
+										} else {
+											cz_min = interp_interfaces[gaussian_seed_layer_y[m] - 1];
+											cz_max = interp_interfaces[gaussian_seed_layer_y[m]];
+										}
+
+										_cz_interp = (cz - cz_min) / PetscAbs(cz_max - cz_min);
+										_var = 0.02;
+
+										strain_array[p] = strain_seed_layer[l] * PetscExpReal((-0.5*PetscPowReal(_cz_interp-0.5, 2))/_var) / (PetscSqrtReal(2*PETSC_PI)*_var) / 19.947114020071638;
+
+										_g_applied = PETSC_TRUE;
 									}
+								}
 
-									_cz_interp = (cz - cz_min) / PetscAbs(cz_max - cz_min);
-									_var = 0.02;
-
-									strain_array[p] = strain_seed_layer[l] * PetscExpReal((-0.5*PetscPowReal(_cz_interp-0.5, 2))/_var) / (PetscSqrtReal(2*PETSC_PI)*_var) / 19.947114020071638;
-
-									// PetscPrintf(PETSC_COMM_SELF,"[%d] GAUSSIAN p = % 8d cz=%lf seed_layer[%d] = %d strain_seed_layer = %lf strain_array = %lf\n", rank, p, cz, l, seed_layer[l], strain_seed_layer[l], strain_array[p]);
-
-									break;
+								if (!_g_applied) {
+									strain_array[p] = strain_seed_layer[l];
 								}
 							} else {
-								strain_array[p] = strain_seed_layer[l];
-							}
+								_g_applied = PETSC_FALSE;
+								for (int m = 0; gaussian_seed_layer_y_set == PETSC_TRUE && m < gaussian_seed_layer_y_size; m++) {
+									if (gaussian_seed_layer_y[m] == seed_layer[l]) {
 
-							// if (seed_layer[l] == 3) {
-							// 	PetscPrintf(PETSC_COMM_SELF,"[%d] GAUSSIAN p = % 8d cz=%lf seed_layer[%d] = %d strain_seed_layer = %lf strain_array = %lf\n", rank, p, cz, l, seed_layer[l], strain_seed_layer[l], strain_array[p]);
-							// }
-						} else {
-							if (gaussian_seed_layer_y_set == PETSC_TRUE) {
-								for (int m = 0; m < gaussian_seed_layer_y_size && gaussian_seed_layer_y[m] == seed_layer[l]; m++) {
-									if (gaussian_seed_layer_y[m] == 0) {
-										cz_min = depth;
-										cz_max = interp_interfaces[0];
-									} else if (gaussian_seed_layer_y[m] == n_interfaces) {
-										cz_min = interp_interfaces[n_interfaces - 1];
-										cz_max = 0;
-									} else {
-										cz_min = interp_interfaces[gaussian_seed_layer_y[m] - 1];
-										cz_max = interp_interfaces[gaussian_seed_layer_y[m]];
+
+										if (gaussian_seed_layer_y[m] == 0) {
+											cz_min = depth;
+											cz_max = interp_interfaces[0];
+										} else if (gaussian_seed_layer_y[m] == n_interfaces) {
+											cz_min = interp_interfaces[n_interfaces - 1];
+											cz_max = 0;
+										} else {
+											cz_min = interp_interfaces[gaussian_seed_layer_y[m] - 1];
+											cz_max = interp_interfaces[gaussian_seed_layer_y[m]];
+										}
+
+										_cz_interp = (cz - cz_min) / PetscAbs(cz_max - cz_min);
+										_var = 0.02;
+
+										strain_array[p] += strain_seed_layer[l] * PetscExpReal((-0.5*PetscPowReal(_cz_interp-0.5, 2))/_var) / (PetscSqrtReal(2*PETSC_PI)*_var) / 19.947114020071638;
+
+										_g_applied = PETSC_TRUE;
 									}
-
-									_cz_interp = (cz - cz_min) / PetscAbs(cz_max - cz_min);
-									_var = 0.02;
-
-									strain_array[p] += strain_seed_layer[l] * PetscExpReal((-0.5*PetscPowReal(_cz_interp-0.5, 2))/_var) / (PetscSqrtReal(2*PETSC_PI)*_var) / 19.947114020071638;
-
-									// PetscPrintf(PETSC_COMM_SELF,"[%d] GAUSSIAN p = % 8d cz=%lf seed_layer[%d] = %d strain_seed_layer = %lf strain_array = %lf\n", rank, p, cz, l, seed_layer[l], strain_seed_layer[l], strain_array[p]);
-
-									break;
 								}
-							} else {
-								strain_array[p] += strain_seed_layer[l];
+
+								if (!_g_applied) {
+									strain_array[p] += strain_seed_layer[l];
+								}
 							}
-
-							// if (seed_layer[l] == 3) {
-							// 	PetscPrintf(PETSC_COMM_SELF,"[%d] GAUSSIAN p = % 8d cz=%lf seed_layer[%d] = %d strain_seed_layer = %lf strain_array = %lf\n", rank, p, cz, l, seed_layer[l], strain_seed_layer[l], strain_array[p]);
-							// }
-
 						}
 					}
 				}

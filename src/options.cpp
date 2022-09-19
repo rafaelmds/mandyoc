@@ -74,11 +74,15 @@ PetscErrorCode parse_options(int rank)
 			exit(1);
 		}
 
-		PetscPrintf(PETSC_COMM_WORLD, "Number of seed layers: %d\n", seed_layer_size);
+		PetscPrintf(PETSC_COMM_WORLD, "Number of seed layers: %d (gaussian %d)\n", seed_layer_size, gaussian_seed_layer_y_size);
 		for (int k = 0; k < seed_layer_size; k++) {
 			PetscPrintf(PETSC_COMM_WORLD, "seed layer: %d - strain: %lf", seed_layer[k], strain_seed_layer[k]);
-			for (int g = 0; gaussian_seed_layer_y_set == PETSC_TRUE && g < gaussian_seed_layer_y_size && gaussian_seed_layer_y[g] == seed_layer[k]; g++) {
-				PetscPrintf(PETSC_COMM_WORLD, " - gaussian");
+			for (int g = 0; g < gaussian_seed_layer_y_size; g++) {
+				if (gaussian_seed_layer_y[g] == seed_layer[k]) {
+					PetscPrintf(PETSC_COMM_WORLD, " - gaussian");
+
+					break;
+				}
 			}
 			PetscPrintf(PETSC_COMM_WORLD, "\n");
 		}
