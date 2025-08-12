@@ -1,4 +1,5 @@
 #include <petscksp.h>
+#include "sp_mode.h"
 
 // Prototypes
 int check_a_b(char tkn_w[], char tkn_v[], const char str_a[], const char str_b[]);
@@ -75,7 +76,7 @@ extern PetscInt bcv_extern;
 extern PetscInt binary_output;
 extern PetscInt sticky_blanket_air;
 extern PetscInt multi_velocity;
-extern PetscInt sp_mode;
+extern SP_Mode sp_mode;
 extern PetscInt free_surface_stab;
 extern PetscInt print_step_files;
 extern PetscInt RK4;
@@ -98,6 +99,7 @@ extern PetscBool sp_surface_tracking;
 extern PetscBool sp_surface_processes;
 extern PetscReal sp_d_c;
 extern PetscBool set_sp_d_c;
+extern PetscInt dms_s_ppe;
 extern PetscInt high_kappa_in_asthenosphere;
 extern PetscBool plot_sediment;
 extern PetscBool a2l;
@@ -140,6 +142,15 @@ extern PetscInt n_mv;
 extern PetscScalar *var_bcv_time;
 extern PetscScalar *var_bcv_scale;
 extern PetscInt n_var_bcv;
+
+extern PetscReal *sediment_layer_time;
+extern PetscInt *sediment_layer_id;
+extern PetscInt n_sediment_layer;
+extern PetscInt active_sediment_layer;
+
+extern PetscReal *sedimentation_rate_time;
+extern PetscReal *sedimentation_rate_value;
+extern PetscInt n_sedimentation_rate;
 
 extern PetscInt variable_climate;
 
@@ -236,7 +247,6 @@ PetscErrorCode reader(int rank, const char fName[]){
 			else if (strcmp(tkn_w, "sub_division_time_step") == 0) {sub_division_time_step = atof(tkn_v);}
 			else if (strcmp(tkn_w, "particles_perturb_factor") == 0) {particles_perturb_factor = atof(tkn_v);}
 			else if (strcmp(tkn_w, "rtol") == 0) {rtol = atof(tkn_v);}
-			else if (strcmp(tkn_w, "sp_mode") == 0) {sp_mode = atoi(tkn_v);}
 			else if (strcmp(tkn_w, "Xi_min") == 0) {Xi_min = atof(tkn_v);}
 			else if (strcmp(tkn_w, "random_initial_strain") == 0) {random_initial_strain = atof(tkn_v);}
 			else if (strcmp(tkn_w, "pressure_const") == 0) {pressure_const = atof(tkn_v);}
@@ -250,8 +260,12 @@ PetscErrorCode reader(int rank, const char fName[]){
 			else if (strcmp(tkn_w, "sea_level") == 0) {sea_level = atof(tkn_v);}
 			else if (strcmp(tkn_w, "basal_heat") == 0) {basal_heat = atof(tkn_v);}
 			else if (strcmp(tkn_w, "sp_d_c") == 0) {sp_d_c = atof(tkn_v);}
+			else if (strcmp(tkn_w, "surface_particles_per_element") == 0) {dms_s_ppe = atoi(tkn_v);}
 			else if (strcmp(tkn_w, "weakening_min") == 0) {weakening_min = atof(tkn_v);}
 			else if (strcmp(tkn_w, "weakening_max") == 0) {weakening_max = atof(tkn_v);}
+
+			// String parameters
+			else if (strcmp(tkn_w, "sp_mode") == 0) {sp_mode = sp_mode_from_string(tkn_v);}
 
 			// Boolean parameters
 			else if (strcmp(tkn_w, "geoq") == 0) {geoq_on = check_a_b(tkn_w, tkn_v, "on", "off");}
@@ -473,6 +487,7 @@ PetscErrorCode reader(int rank, const char fName[]){
 	MPI_Bcast(&sp_surface_processes,1,MPI_C_BOOL,0,PETSC_COMM_WORLD);
 	MPI_Bcast(&sp_d_c,1,MPIU_REAL,0,PETSC_COMM_WORLD);
 	MPI_Bcast(&set_sp_d_c,1,MPI_C_BOOL,0,PETSC_COMM_WORLD);
+	MPI_Bcast(&dms_s_ppe,1,MPI_INT,0,PETSC_COMM_WORLD);
 	MPI_Bcast(&plot_sediment,1,MPI_C_BOOL,0,PETSC_COMM_WORLD);
 	MPI_Bcast(&a2l,1,MPI_C_BOOL,0,PETSC_COMM_WORLD);
 	MPI_Bcast(&weakening_min,1,MPIU_REAL,0,PETSC_COMM_WORLD);
@@ -980,6 +995,83 @@ PetscErrorCode reader(int rank, const char fName[]){
 		MPI_Bcast(mv_time,n_mv,MPIU_SCALAR,0,PETSC_COMM_WORLD);
 	}
 
+	// Multiple sediment layer
+	if (dimensions == 2 && sp_surface_processes) {
+		PetscInt initial_active_sediment_layer;
+		FILE *f_sediment_layers;
+
+		f_sediment_layers = fopen("sediment_layers.txt", "r");
+
+		if (f_sediment_layers == NULL) {
+			PetscPrintf(PETSC_COMM_WORLD, "\n\n\n\sediment_layers.txt not found\n\n\n\n");
+			exit(1);
+		}
+
+		if (rank == 0) {
+			fscanf(f_sediment_layers, "%d%d", &n_sediment_layer, &initial_active_sediment_layer);
+		}
+
+		active_sediment_layer = initial_active_sediment_layer;
+
+		MPI_Bcast(&n_sediment_layer, 1, MPI_INT, 0, PETSC_COMM_WORLD);
+		PetscCalloc1(n_sediment_layer, &sediment_layer_id);
+		PetscCalloc1(n_sediment_layer, &sediment_layer_time);
+
+		if (rank == 0) {
+			PetscPrintf(PETSC_COMM_WORLD, "Multiple sediment layer\n");
+
+			PetscPrintf(PETSC_COMM_WORLD, "%lf Myr, sediment_layer = %d (initial active sediment layer)\n", 0.0, active_sediment_layer);
+
+			for (int i = 0; i < n_sediment_layer; i++) {
+				fscanf(f_sediment_layers, "%lf%d", &sediment_layer_time[i], &sediment_layer_id[i]);
+				PetscPrintf(PETSC_COMM_WORLD, "%lf Myr, sediment_layer = %d\n", sediment_layer_time[i], sediment_layer_id[i]);
+			}
+
+			PetscPrintf(PETSC_COMM_WORLD, "\n\n");
+			fclose(f_sediment_layers);
+		}
+
+		MPI_Bcast(sediment_layer_time, n_sediment_layer, MPIU_SCALAR, 0, PETSC_COMM_WORLD);
+		MPI_Bcast(sediment_layer_id, n_sediment_layer, MPI_INT, 0, PETSC_COMM_WORLD);
+		MPI_Bcast(&active_sediment_layer, 1, MPI_INT, 0, PETSC_COMM_WORLD);
+	}
+
+
+	// SP_Mode SP_SEDIMENTATION_RATE_LIMITED
+	if (dimensions == 2 && sp_mode == SP_SEDIMENTATION_RATE_LIMITED) {
+		FILE *f_sedimentation_rate;
+
+		f_sedimentation_rate = fopen("sedimentation_rate.txt", "r");
+
+		if (f_sedimentation_rate == NULL) {
+			PetscPrintf(PETSC_COMM_WORLD, "\n\n\n\sedimentation_rate.txt not found\n\n\n\n");
+			exit(1);
+		}
+
+		if (rank == 0) {
+			fscanf(f_sedimentation_rate, "%d", &n_sedimentation_rate);
+		}
+
+		MPI_Bcast(&n_sedimentation_rate, 1, MPI_INT, 0, PETSC_COMM_WORLD);
+		PetscCalloc1(n_sedimentation_rate, &sedimentation_rate_value);
+		PetscCalloc1(n_sedimentation_rate, &sedimentation_rate_time);
+
+		if (rank == 0) {
+			PetscPrintf(PETSC_COMM_WORLD, "Variable sedimentation rate\n");
+
+			for (int i = 0; i < n_sedimentation_rate; i++) {
+				fscanf(f_sedimentation_rate, "%lf%lf", &sedimentation_rate_time[i], &sedimentation_rate_value[i]);
+				PetscPrintf(PETSC_COMM_WORLD, "%lf Myr, sedimentation_rate = %lf\n", sedimentation_rate_time[i], sedimentation_rate_value[i]);
+			}
+
+			PetscPrintf(PETSC_COMM_WORLD, "\n\n");
+			fclose(f_sedimentation_rate);
+		}
+
+		MPI_Bcast(sedimentation_rate_time, n_sedimentation_rate, MPIU_SCALAR, 0, PETSC_COMM_WORLD);
+		MPI_Bcast(sedimentation_rate_value, n_sedimentation_rate, MPIU_SCALAR, 0, PETSC_COMM_WORLD);
+	}
+
 	PetscFunctionReturn(0);
 
 }
@@ -1075,4 +1167,44 @@ PetscBool check_prop(char *s)
 		}
 	}
 	return PETSC_FALSE;
+}
+
+SP_Mode sp_mode_from_string(const char* str) {
+	if (strcmp(str, "none") == 0) {
+		return SP_NONE;
+	}
+    if (strcmp(str, "diffusion") == 0) {
+        return SP_DIFFUSION;
+    }
+	if (strcmp(str, "sedimentation_only") == 0) {
+        return SP_SEDIMENTATION_ONLY;
+    }
+	if (strcmp(str, "sedimentation_rate_limited") == 0) {
+        return SP_SEDIMENTATION_RATE_LIMITED;
+    }
+
+    fprintf(stderr, "Error: Unknown sp_mode '%s'\nValid modes are:\n", str);
+    for (const char** mode = valid_modes; *mode; mode++) {
+        fprintf(stderr, "%s\n", *mode);
+    }
+
+    exit(1);
+}
+
+const char* sp_mode_to_string(SP_Mode mode) {
+    switch(mode) {
+		case SP_NONE:
+			return "none";
+        case SP_DIFFUSION:
+			return "diffusion";
+		case SP_SEDIMENTATION_ONLY:
+			return "sedimentation_only";
+		case SP_SEDIMENTATION_RATE_LIMITED:
+			return "sedimentation_rate_limited";
+    }
+
+	// If execution reaches here, it's a programming error
+	fprintf(stderr, "Invalid mode value: %d\n", (int)mode);
+
+    exit(1);
 }

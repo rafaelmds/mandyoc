@@ -5,6 +5,8 @@
 #include <petscmath.h>
 #include <petscviewer.h>
 
+#include "sp_mode.h"
+
 extern long Nx;
 extern double Lx;
 extern int n_interfaces;
@@ -14,13 +16,16 @@ extern double depth;
 extern DM dms;
 extern DM da_Veloc;
 
+extern double seg_per_ano;
+
 extern PetscScalar *interfaces;
 extern PetscScalar *inter_rho;
 extern PetscScalar *inter_geoq;
 
-extern PetscInt sp_mode;
+extern SP_Mode sp_mode;
 extern PetscScalar sp_d_c;
 extern PetscBool a2l;
+extern PetscScalar sea_level;
 
 extern DM dmcell_s;
 extern DM dms_s;
@@ -30,6 +35,20 @@ extern PetscReal epsilon_x;
 extern Vec local_V;
 extern Vec Veloc_weight;
 
+extern double seg_per_ano;
+
+extern PetscReal *sediment_layer_time;
+extern PetscInt *sediment_layer_id;
+extern PetscInt n_sediment_layer;
+extern PetscInt cont_sediment_layer;
+extern PetscInt active_sediment_layer;
+
+extern PetscReal *sedimentation_rate_time;
+extern PetscReal *sedimentation_rate_value;
+extern PetscInt n_sedimentation_rate;
+extern PetscInt cont_sedimentation_rate;
+extern PetscReal sedimentation_rate;
+
 typedef struct {
 	PetscScalar u;
 	PetscScalar w;
@@ -38,11 +57,16 @@ typedef struct {
 PetscErrorCode sp_create_surface_swarm_2d();
 PetscErrorCode sp_move_surface_swarm(PetscInt dimensions, PetscReal dt);
 PetscErrorCode sp_move_surface_swarm_advection_2d(PetscReal dt);
+PetscReal sp_evaluate_adjusted_mean_elevation_with_sea_level();
 PetscErrorCode sp_surface_swarm_interpolation();
 PetscErrorCode sp_evaluate_surface_processes(PetscInt dimensions, PetscReal dt);
 PetscErrorCode sp_evaluate_surface_processes_2d(PetscReal dt);
 PetscErrorCode sp_evaluate_surface_processes_2d_diffusion(PetscReal dt);
+PetscErrorCode sp_evaluate_surface_processes_2d_sedimentation_only(PetscReal dt);
+PetscErrorCode sp_evaluate_surface_processes_2d_sedimentation_rate_limited(PetscReal dt);
 PetscErrorCode sp_update_surface_swarm_particles_properties();
+PetscErrorCode sp_update_active_sediment_layer(double time);
+PetscErrorCode sp_update_sedimentation_rate(double time);
 PetscErrorCode DMLocatePoints_DMDARegular_2d(DM dm,Vec pos,DMPointLocationType ltype, PetscSF cellSF);
 PetscErrorCode DMGetNeighbors_DMDARegular_2d(DM dm,PetscInt *nneighbors,const PetscMPIInt **neighbors);
 PetscErrorCode sp_view_2d(DM dm, const char prefix[]);
@@ -154,7 +178,7 @@ PetscErrorCode sp_create_surface_swarm_2d()
         ierr = DMSwarmRestoreField(dms_s, DMSwarmPICField_coor, &bs, NULL, (void **)&array); CHKERRQ(ierr); //
 
         ierr = DMView(dms_s, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
-        ierr = sp_view_2d(dms_s, "surface_0"); CHKERRQ(ierr);
+        ierr = sp_view_2d(dms_s, "initial_surface"); CHKERRQ(ierr);
     }
 
     PetscFunctionReturn(0);
@@ -249,6 +273,55 @@ PetscErrorCode sp_move_surface_swarm_advection_2d(PetscReal dt)
     ierr = DMDAVecRestoreArray(da_Veloc, local_V, &VV); CHKERRQ(ierr);
 
     PetscFunctionReturn(0);
+}
+
+PetscReal sp_evaluate_adjusted_mean_elevation_with_sea_level()
+{
+    PetscErrorCode ierr;
+    PetscMPIInt rank;
+
+    PetscReal mean_h;
+    PetscInt j;
+    PetscInt cont;
+    PetscReal hsl; // mean elevation plus sea level height
+
+    Vec global_surface;
+    Vec seq_surface;
+    VecScatter ctx;
+    PetscInt seq_surface_size;
+    PetscReal *seq_array;
+
+
+    ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank); CHKERRQ(ierr);
+
+    ierr = DMSwarmCreateGlobalVectorFromField(dms_s, DMSwarmPICField_coor, &global_surface); CHKERRQ(ierr);
+    ierr = VecScatterCreateToZero(global_surface, &ctx, &seq_surface); CHKERRQ(ierr);
+    ierr = VecScatterBegin(ctx, global_surface, seq_surface, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+    ierr = VecScatterEnd(ctx, global_surface, seq_surface, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+    ierr = VecScatterDestroy(&ctx); CHKERRQ(ierr);
+    ierr = DMSwarmDestroyGlobalVectorFromField(dms_s, DMSwarmPICField_coor, &global_surface); CHKERRQ(ierr);
+
+    ierr = VecGetSize(seq_surface, &seq_surface_size); CHKERRQ(ierr);
+    ierr = VecGetArray(seq_surface, &seq_array); CHKERRQ(ierr);
+
+    if (!rank) {
+        mean_h = 0.0;
+
+        for (j = 0, cont = 0; j < seq_surface_size / 2 / 4; j++) {
+            mean_h += seq_array[2 * j + 1];
+            cont++;
+        }
+
+        mean_h /= cont;
+
+        hsl = mean_h + sea_level;
+    }
+
+    ierr = MPI_Bcast(&hsl, 1, MPIU_SCALAR, 0, PETSC_COMM_WORLD); CHKERRQ(ierr);
+
+    ierr = VecRestoreArray(seq_surface, &seq_array); CHKERRQ(ierr);
+
+    return hsl;
 }
 
 PetscErrorCode sp_surface_swarm_interpolation()
@@ -422,8 +495,14 @@ PetscErrorCode sp_evaluate_surface_processes_2d(PetscReal dt)
 
     PetscFunctionBeginUser;
 
-    if (sp_mode == 1) {
+    if (sp_mode == SP_DIFFUSION) {
         ierr = sp_evaluate_surface_processes_2d_diffusion(dt); CHKERRQ(ierr);
+    }
+    else if (sp_mode == SP_SEDIMENTATION_ONLY) {
+        ierr = sp_evaluate_surface_processes_2d_sedimentation_only(dt); CHKERRQ(ierr);
+    }
+    else if (sp_mode == SP_SEDIMENTATION_RATE_LIMITED) {
+        ierr = sp_evaluate_surface_processes_2d_sedimentation_rate_limited(dt); CHKERRQ(ierr);
     }
 
     PetscFunctionReturn(0);
@@ -483,14 +562,6 @@ PetscErrorCode sp_evaluate_surface_processes_2d_diffusion(PetscReal dt)
 
         r = sp_d_c*sp_dt/(sp_dx*sp_dx);
 
-        ierr = PetscPrintf(PETSC_COMM_WORLD, "[sp_diffusion] dt=%e\n", dt); CHKERRQ(ierr);
-        ierr = PetscPrintf(PETSC_COMM_WORLD, "[sp_diffusion] size=%d\n", n); CHKERRQ(ierr);
-        ierr = PetscPrintf(PETSC_COMM_WORLD, "[sp_diffusion] sp_dx=%e\n", sp_dx); CHKERRQ(ierr);
-        ierr = PetscPrintf(PETSC_COMM_WORLD, "[sp_diffusion] sp_dt=%e\n", sp_dt); CHKERRQ(ierr);
-        ierr = PetscPrintf(PETSC_COMM_WORLD, "[sp_diffusion] max_steps=%d\n", max_steps); CHKERRQ(ierr);
-        ierr = PetscPrintf(PETSC_COMM_WORLD, "[sp_diffusion] sp_d_c=%e\n", sp_d_c); CHKERRQ(ierr);
-        ierr = PetscPrintf(PETSC_COMM_WORLD, "[sp_diffusion] r=%e\n", r); CHKERRQ(ierr);
-
         seq_array[1] = seq_array[3];
         seq_array[2*n-1] = seq_array[2*n-3];
 
@@ -509,7 +580,7 @@ PetscErrorCode sp_evaluate_surface_processes_2d_diffusion(PetscReal dt)
         } while (t < max_steps);
     }
 
-    // TODO: tentar alterar para scatter to all, assim nao precisa alocar seq_array
+    // TODO: change to scatter all?
 
     ierr = MPI_Barrier(PETSC_COMM_WORLD); CHKERRQ(ierr);
 
@@ -531,6 +602,234 @@ PetscErrorCode sp_evaluate_surface_processes_2d_diffusion(PetscReal dt)
 
     ierr = DMSwarmRestoreField(dms_s, DMSwarmPICField_coor, &bs, NULL, (void **)&array); CHKERRQ(ierr);
     ierr = VecRestoreArray(seq_surface, &seq_array); CHKERRQ(ierr);
+
+    PetscFunctionReturn(0);
+}
+
+PetscErrorCode sp_evaluate_surface_processes_2d_sedimentation_only(PetscReal dt)
+{
+    PetscErrorCode ierr;
+    PetscMPIInt rank;
+
+    PetscReal hsl;
+    PetscInt p;
+    PetscInt bs;
+    PetscInt si;
+    PetscInt nlocal;
+    PetscReal *array;
+
+    PetscFunctionBeginUser;
+
+    ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank); CHKERRQ(ierr);
+
+    hsl = sp_evaluate_adjusted_mean_elevation_with_sea_level();
+
+    ierr = DMDAGetCorners(da_Veloc, &si, NULL, NULL, NULL, NULL, NULL); CHKERRQ(ierr);
+    ierr = DMSwarmGetLocalSize(dms_s, &nlocal); CHKERRQ(ierr);
+    ierr = DMSwarmGetField(dms_s, DMSwarmPICField_coor, &bs, NULL, (void**)&array); CHKERRQ(ierr);
+
+    for (p = 0; p < nlocal; p++) {
+        if (array[2*p+1] < hsl) {
+            array[2*p+1] = hsl;
+            PetscSynchronizedPrintf(PETSC_COMM_WORLD, "[SP sedimentation_only] [%d] updated surface [%.3e | %d] = %.3e\n", rank, array[2*p], p, hsl);
+        }
+    }
+
+    PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT);
+
+    ierr = DMSwarmRestoreField(dms_s, DMSwarmPICField_coor, &bs, NULL, (void **)&array); CHKERRQ(ierr);
+
+    PetscFunctionReturn(0);
+}
+
+PetscErrorCode sp_evaluate_surface_processes_2d_sedimentation_rate_limited(PetscReal dt)
+{
+    PetscErrorCode ierr;
+    PetscMPIInt rank;
+
+    PetscFunctionBeginUser;
+
+    ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank); CHKERRQ(ierr);
+
+    PetscInt n;
+    PetscInt i;
+    PetscInt j;
+    PetscInt si;
+    PetscInt bs;
+
+    PetscInt nlocal;
+    PetscInt seq_surface_size;
+
+    Vec global_surface;
+    Vec seq_surface;
+    VecScatter ctx;
+    PetscReal *seq_array;
+    PetscReal *array;
+
+    ierr = DMSwarmCreateGlobalVectorFromField(dms_s, DMSwarmPICField_coor, &global_surface); CHKERRQ(ierr);
+    ierr = VecScatterCreateToZero(global_surface, &ctx, &seq_surface); CHKERRQ(ierr);
+    ierr = VecScatterBegin(ctx, global_surface, seq_surface, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+    ierr = VecScatterEnd(ctx, global_surface, seq_surface, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+    ierr = VecScatterDestroy(&ctx); CHKERRQ(ierr);
+    ierr = DMSwarmDestroyGlobalVectorFromField(dms_s, DMSwarmPICField_coor, &global_surface); CHKERRQ(ierr);
+
+    ierr = VecGetSize(seq_surface, &seq_surface_size); CHKERRQ(ierr);
+    ierr = VecGetArray(seq_surface, &seq_array); CHKERRQ(ierr);
+
+    n = seq_surface_size/2;
+
+    PetscReal hsl = sp_evaluate_adjusted_mean_elevation_with_sea_level();
+
+
+
+    if (!rank) {
+
+        PetscReal sed_per_dt = sedimentation_rate * dt/seg_per_ano; // m^2
+        PetscReal sed_aux, diff_h;
+        PetscReal dx_sed = seq_array[2*1]-seq_array[2*0];
+        PetscReal sed_sum = sed_per_dt/dx_sed; // m (cumulative sedimentation per dx_sed)
+
+        PetscReal continental_slope = 0.06993; // tan(4 degrees)
+        PetscReal test_volume;
+        PetscReal cont_break;
+        PetscReal diff_h_aux;
+        // left margin
+        //printf("sedimentation_rate: %lf\n",sedimentation_rate);
+        for (cont_break=0; cont_break<Lx; cont_break+=dx_sed){
+            test_volume=0.0;
+            for (j=0; j<n; j++){
+                if (seq_array[2*j]<cont_break){
+                    if (seq_array[2*j+1]<hsl){
+                        diff_h =  hsl - seq_array[2*j+1];
+                        test_volume += diff_h * dx_sed;
+                    }
+                }
+                else {
+                    diff_h_aux = hsl-continental_slope*(seq_array[2*j]-cont_break);
+                    if (seq_array[2*j+1]<diff_h_aux){
+                        diff_h = diff_h_aux - seq_array[2*j+1];
+                        test_volume += diff_h * dx_sed;
+                    }
+                }
+            }
+            //printf("%lf %lf\n",test_volume,sed_per_dt);
+            if (test_volume>=sed_per_dt) break;
+        }
+        printf("cont_break = %lf\n\n",cont_break);
+        for (j=0; j<n; j++){
+            if (seq_array[2*j]<cont_break){
+                if (seq_array[2*j+1]<hsl){
+                    //diff_h =  hsl - seq_array[2*j+1];
+                    //seq_array[2*j+1] += diff_h;
+                    seq_array[2*j+1] = hsl;
+                }
+            }
+            else {
+                diff_h_aux = hsl-continental_slope*(seq_array[2*j]-cont_break);
+                if (seq_array[2*j+1]<diff_h_aux){
+                    diff_h = diff_h_aux - seq_array[2*j+1];
+                    seq_array[2*j+1] += diff_h;
+                }
+            }
+        }
+
+        // right margin
+        for (cont_break=Lx; cont_break>0; cont_break-=dx_sed){
+            test_volume=0.0;
+            for (j=0; j<n; j++){
+                if (seq_array[2*j]>cont_break){
+                    if (seq_array[2*j+1]<hsl){
+                        diff_h =  hsl - seq_array[2*j+1];
+                        test_volume += diff_h * dx_sed;
+                    }
+                }
+                else {
+                    diff_h_aux = hsl+continental_slope*(seq_array[2*j]-cont_break);
+                    if (seq_array[2*j+1]<diff_h_aux){
+                        diff_h = diff_h_aux - seq_array[2*j+1];
+                        test_volume += diff_h * dx_sed;
+                    }
+                }
+            }
+            //printf("%lf %lf\n",test_volume,sed_per_dt);
+            if (test_volume>=sed_per_dt) break;
+        }
+        printf("cont_break = %lf\n\n",cont_break);
+        for (j=0; j<n; j++){
+            if (seq_array[2*j]>cont_break){
+                if (seq_array[2*j+1]<hsl){
+                    //diff_h =  hsl - seq_array[2*j+1];
+                    //seq_array[2*j+1] += diff_h;
+                    seq_array[2*j+1] = hsl;
+                }
+            }
+            else {
+                diff_h_aux = hsl+continental_slope*(seq_array[2*j]-cont_break);
+                if (seq_array[2*j+1]<diff_h_aux){
+                    diff_h = diff_h_aux - seq_array[2*j+1];
+                    seq_array[2*j+1] += diff_h;
+                }
+            }
+        }
+
+
+
+        /*sed_aux = sed_sum;
+        // left margin
+        for (i=0;seq_array[2*i+0]<200.0E3;i++);
+
+        for (j=i;(sed_aux>0)&&(j<n);j++){
+            if (seq_array[2*j+1]<hsl){
+                diff_h = hsl - seq_array[2*j+1];
+                if (diff_h<=sed_aux){
+                    seq_array[2*j+1]=hsl;
+                    sed_aux -= diff_h;
+                }
+                else {
+                    seq_array[2*j+1]+=sed_aux;
+                    sed_aux = 0.0;
+                }
+            }
+        }
+
+        sed_aux = sed_sum;
+        // right margin
+        for (i=n-1;seq_array[2*i+0]>seq_array[2*(n-1)+0]-200.0E3;i--);
+
+        for (j=i;(sed_aux>0)&&(j>0);j--){
+            if (seq_array[2*j+1]<hsl){
+                diff_h = hsl - seq_array[2*j+1];
+                if (diff_h<=sed_aux){
+                    seq_array[2*j+1]=hsl;
+                    sed_aux -= diff_h;
+                }
+                else {
+                    seq_array[2*j+1]+=sed_aux;
+                    sed_aux = 0.0;
+                }
+            }
+        }*/
+    }
+
+    ierr = MPI_Bcast(&seq_surface_size, 1, MPI_INT, 0, PETSC_COMM_WORLD); CHKERRQ(ierr);
+
+    if (rank) {
+        ierr = PetscCalloc1(seq_surface_size, &seq_array); CHKERRQ(ierr);
+    }
+    ierr = MPI_Bcast(seq_array, seq_surface_size, MPIU_SCALAR, 0, PETSC_COMM_WORLD);
+
+    ierr = DMDAGetCorners(da_Veloc, &si, NULL, NULL, NULL, NULL, NULL); CHKERRQ(ierr);
+    ierr = DMSwarmGetLocalSize(dms_s, &nlocal); CHKERRQ(ierr);
+    ierr = DMSwarmGetField(dms_s, DMSwarmPICField_coor, &bs, NULL, (void**)&array); CHKERRQ(ierr);
+
+    for (j = 0; j < nlocal; j++) {
+        array[2*j] = seq_array[si*dms_s_ppe*2+2*j];
+        array[2*j+1] = seq_array[si*dms_s_ppe*2+2*j+1];
+    }
+
+    ierr = DMSwarmRestoreField(dms_s, DMSwarmPICField_coor, &bs, NULL, (void **)&array); CHKERRQ(ierr);
+    ierr = VecRestoreArray(seq_surface, &seq_array); CHKERRQ(ierr);
+
 
     PetscFunctionReturn(0);
 }
@@ -611,14 +910,16 @@ PetscErrorCode sp_update_surface_swarm_particles_properties()
         // (A2L) air particle bellow the surface => assign land properties
         if (a2l == PETSC_TRUE && layer[p] == n_interfaces) {
             if (py < surface) {
-                layer[p] = n_interfaces - 1;
-                geoq_fac[p] = inter_geoq[n_interfaces - 1];
+                layer[p] = active_sediment_layer;
+                geoq_fac[p] = inter_geoq[active_sediment_layer];
                 strain_fac[p] = 0.0;
+
+                PetscSynchronizedPrintf(PETSC_COMM_WORLD, "[%d] particle updated - a2l - sedimentation | px=%.3e py=%.3e surface=%.3e | sed_layer = %d\n", rank, px, py, surface, active_sediment_layer);
             }
         }
 
         // (L2A) land particle above the surface => assign air properties
-        if (layer[p] != n_interfaces) {
+        if (layer[p] != n_interfaces) { //  && sp_mode != SP_SEDIMENTATION_ONLY) {
             if (py > surface) {
                 layer[p] = n_interfaces;
                 geoq_fac[p] = inter_geoq[n_interfaces];
@@ -626,6 +927,8 @@ PetscErrorCode sp_update_surface_swarm_particles_properties()
             }
         }
     }
+
+    PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT);
 
 	ierr = DMSwarmRestoreField(dms, "layer", &bs, NULL, (void**)&layer);CHKERRQ(ierr);
 	ierr = DMSwarmRestoreField(dms, "geoq_fac", &bs, NULL, (void**)&geoq_fac);CHKERRQ(ierr);
@@ -638,6 +941,33 @@ PetscErrorCode sp_update_surface_swarm_particles_properties()
 
     PetscFunctionReturn(0);
 }
+
+PetscErrorCode sp_update_sedimentation_rate(double time)
+{
+    PetscFunctionBeginUser;
+
+    if (cont_sedimentation_rate < n_sedimentation_rate && time > 1.0E6*sedimentation_rate_time[cont_sedimentation_rate]) {
+        sedimentation_rate = sedimentation_rate_value[cont_sedimentation_rate];
+
+        cont_sedimentation_rate++;
+	}
+
+    PetscFunctionReturn(0);
+}
+
+PetscErrorCode sp_update_active_sediment_layer(double time)
+{
+    PetscFunctionBeginUser;
+
+    if (cont_sediment_layer < n_sediment_layer && time > 1.0E6*sediment_layer_time[cont_sediment_layer]) {
+        active_sediment_layer = sediment_layer_id[cont_sediment_layer];
+
+        cont_sediment_layer++;
+	}
+
+    PetscFunctionReturn(0);
+}
+
 
 PetscErrorCode sp_view_2d(DM dm, const char prefix[])
 {
