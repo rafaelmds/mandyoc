@@ -802,17 +802,13 @@ PetscErrorCode reader(int rank, const char fName[]){
 			}
 		}
 
-		// Copy <str> to the firts value of <interfaces> and read the rest of that line
-		interfaces[0] = atof(str);
-		for (PetscInt j = 1; j < n_interfaces; j++)
-		{
-			fscanf(f_interfaces, "%lf", &interfaces[j * Nx]);
-			interfaces[j * Nx] /= h0_scaled;
-		}
-		// Read other lines into <interfaces> after checking dimension
+		// Rewind so fscanf reads the full first line
+		fseek(f_interfaces, -strlen(str), SEEK_CUR);
+
+		// Read lines into <interfaces> after checking dimension
 		if (dimensions == 2)
 		{
-			for (PetscInt i = 1; i < Nx; i++)
+			for (PetscInt i = 0; i < Nx; i++)
 			{
 				for (PetscInt j = 0; j < n_interfaces; j++)
 				{
@@ -823,7 +819,7 @@ PetscErrorCode reader(int rank, const char fName[]){
 		}
 		else
 		{
-			for (PetscInt i = 1; i < Nx * Ny; i++)
+			for (PetscInt i = 0; i < Nx * Ny; i++)
 			{
 				for (PetscInt j = 0; j < n_interfaces; j++)
 				{
