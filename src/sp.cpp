@@ -76,6 +76,7 @@ PetscErrorCode sp_evaluate_surface_processes_2d(PetscReal dt);
 PetscErrorCode sp_evaluate_surface_processes_2d_diffusion(PetscReal dt);
 PetscErrorCode sp_evaluate_surface_processes_2d_sedimentation_only(PetscReal dt);
 PetscErrorCode sp_evaluate_surface_processes_2d_sedimentation_rate_limited(PetscReal dt);
+PetscErrorCode sp_evaluate_surface_processes_2d_theunissen(PetscReal dt);
 PetscErrorCode sp_update_surface_swarm_particles_properties();
 PetscErrorCode sp_update_active_sediment_layer(double time);
 PetscErrorCode sp_update_sedimentation_rate(double time);
@@ -90,7 +91,7 @@ PetscInt get_i(PetscReal cx);
 PetscInt get_k(PetscReal cz);
 PetscReal get_rx(PetscReal cx, PetscInt i);
 PetscReal get_rz(PetscReal cz, PetscInt k);
-
+bool verbose_debug=false;
 
 PetscErrorCode sp_create_surface_swarm_2d()
 {
@@ -517,6 +518,9 @@ PetscErrorCode sp_evaluate_surface_processes_2d(PetscReal dt)
     else if (sp_mode == SP_SEDIMENTATION_RATE_LIMITED) {
         ierr = sp_evaluate_surface_processes_2d_sedimentation_rate_limited(dt); CHKERRQ(ierr);
     }
+    else if (sp_mode == SP_THEUNISSEN_SEDIMENTATION){
+        ierr = sp_evaluate_surface_processes_2d_theunissen(dt); CHKERRQ(ierr);
+    }
 
     PetscFunctionReturn(0);
 }
@@ -861,6 +865,181 @@ PetscErrorCode sp_evaluate_surface_processes_2d_sedimentation_rate_limited(Petsc
     ierr = VecDestroy(&seq_surface); CHKERRQ(ierr);
     if (rank) {
         ierr = PetscFree(seq_array_copy); CHKERRQ(ierr);
+    }
+
+    PetscFunctionReturn(0);
+}
+
+PetscErrorCode sp_evaluate_surface_processes_2d_theunissen(PetscReal dt){
+    PetscErrorCode ierr;
+    PetscMPIInt rank;
+
+    PetscFunctionBeginUser;
+
+    ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank); CHKERRQ(ierr);
+
+    // Variables needed
+    PetscInt n;
+    PetscInt i;
+    PetscInt j;
+    PetscInt si;
+    PetscInt bs;
+    PetscInt nlocal;
+    PetscInt seq_surface_size;
+    Vec global_surface;
+    Vec seq_surface;
+    VecScatter ctx;
+    PetscReal *seq_array;
+    PetscReal *array;
+    PetscReal Ld=35000.0; // (m) characteristic length scale   
+
+    // Data to process rank 0
+    ierr = DMSwarmCreateGlobalVectorFromField(dms_s, DMSwarmPICField_coor, &global_surface); CHKERRQ(ierr);
+    ierr = VecScatterCreateToZero(global_surface, &ctx, &seq_surface); CHKERRQ(ierr);
+    ierr = VecScatterBegin(ctx, global_surface, seq_surface, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+    ierr = VecScatterEnd(ctx, global_surface, seq_surface, INSERT_VALUES, SCATTER_FORWARD); CHKERRQ(ierr);
+    ierr = VecScatterDestroy(&ctx); CHKERRQ(ierr);
+    ierr = DMSwarmDestroyGlobalVectorFromField(dms_s, DMSwarmPICField_coor, &global_surface); CHKERRQ(ierr);
+    PetscReal hsl = sp_evaluate_adjusted_mean_elevation_with_sea_level();
+
+    if (!rank){
+        ierr = VecGetSize(seq_surface, &seq_surface_size); CHKERRQ(ierr);
+        ierr = VecGetArray(seq_surface, &seq_array); CHKERRQ(ierr);
+        n = seq_surface_size/2;
+    }
+    
+    // Share data to all ranks 
+    ierr = MPI_Bcast(&seq_surface_size, 1, MPI_INT, 0, PETSC_COMM_WORLD); CHKERRQ(ierr);
+    if (rank) {
+        ierr = PetscCalloc1(seq_surface_size, &seq_array); CHKERRQ(ierr);
+        n = seq_surface_size / 2;
+    }
+    // ierr = MPI_Bcast(seq_array, seq_surface_size, MPIU_SCALAR, 0, PETSC_COMM_WORLD); CHKERRQ(ierr);
+
+    // Dynamic progradation logic
+    if (!rank){
+        PetscReal dx_sed = seq_array[2*1]-seq_array[2*0]; // (m) spatial resolution for topography - constant
+        PetscReal dep_factor = dx_sed/Ld; // dimensionless deposition factor
+        PetscReal Qs_total = sedimentation_rate * (dt/seg_per_ano); // (m^2) sediment volume in the time step
+        PetscReal Qs_flux, Qs_potential, Qs_excess, Qs_real_dep, h_potential, h_dep; // aux variables to calculate Qs in each node and the potential height
+        PetscReal current_topo, h_accommodation; // topography and accomodation thickness 
+        Qs_flux = Qs_total;
+        
+        if (verbose_debug==true){
+            printf("dx_sed = %f\n",dx_sed);
+            printf("hsl = %f \n", hsl);
+            printf("dep_factor = %f\n",dep_factor);
+            printf("sedimentation_rate=%e\n", sedimentation_rate);
+            printf("Qs_total = %e\n",Qs_total);
+            printf("dt = %e",dt);
+        }
+        printf("[Li] Qs_flux = %e m^2 || ",Qs_flux);
+        // Future: Turn it on a separated generalized function for both sides deposition (0: L2R; 1: R2L)
+        // left side progradation
+        for (j=0; j<n; j++){
+            Qs_potential = Qs_flux*dep_factor;
+            h_potential = Qs_potential/dx_sed;
+
+            // check if the topography is bellow the sea level and how many sediment is deposited
+            current_topo = seq_array[2*j+1]; // get the topography
+            h_accommodation = hsl - current_topo; // accomodation space in the node (must be greather than 0 to deposition)
+            if (h_accommodation < 0) h_accommodation = 0;
+
+            // Sediment Bypass
+            if (h_potential <= h_accommodation){
+                h_dep = h_potential;
+                Qs_real_dep = h_dep*dx_sed;
+                //Qs_excess = 0;
+
+            } else {
+                h_dep = h_accommodation;
+                Qs_real_dep = h_dep*dx_sed;
+                // calculate the amount of sediment bypassed
+                
+                //Qs_excess = Qs_potential-Qs_real_dep;
+            }
+
+            if (verbose_debug==true){
+            printf("current_topo = %f\n", current_topo);
+            printf("h_potential = %f\n", h_potential);
+            printf("h_dep = %f \n", h_dep);
+            printf("h_accommodation = %f\n",h_accommodation);
+            printf("Qs_potential = %e\n",Qs_potential);
+            printf("Qs_real_dep = %e\n",Qs_real_dep);
+            printf("dt = %e\n",dt);
+               }
+
+            // Update topography
+            seq_array[2*j+1] += h_dep;
+               if (verbose_debug==true){printf("new_topo(%e) = %f\n",seq_array[2*j],seq_array[2*j+1]);}
+            // Update Qs flux for the next cell
+            Qs_flux = Qs_flux - Qs_real_dep; //+ Qs_excess; //Qs[i+1] = Qs[i]-Qdep[i]+Qbp[i]
+        }
+        printf("[Lf] Qs_flux = %e m^2 \n",Qs_flux);
+        // printf("[L] Qs_total-Qs_flux = %e");
+        Qs_flux = Qs_total;
+        printf("[Ri] Qs_flux = %e m^2 || ",Qs_flux);
+        // right side
+        for (j = n-1; j>=0; j--){
+            Qs_potential = Qs_flux*dep_factor;
+            h_potential = Qs_potential/dx_sed;
+
+            // check if the topography is bellow the sea level and how many sediment is deposited
+            current_topo = seq_array[2*j+1]; // get the topography
+            h_accommodation = hsl - current_topo; // accomodation space in the node (must be greather than 0 to deposition)
+            if (h_accommodation < 0) h_accommodation = 0;
+
+            // Sediment Bypass
+            if (h_potential <= h_accommodation){
+                h_dep = h_potential;
+                Qs_real_dep = h_dep*dx_sed;
+                Qs_excess = 0;
+
+            } else {
+                h_dep = h_accommodation;
+                Qs_real_dep = h_dep*dx_sed;
+                // calculate the amount of sediment bypassed
+                
+                Qs_excess = Qs_potential-Qs_real_dep;
+            }
+
+            
+            // Update topography
+            seq_array[2*j+1] += h_dep;
+
+            // Update Qs flux for the next cell
+            Qs_flux = Qs_flux - Qs_real_dep; //+ Qs_excess; //Qs[i+1] = Qs[i]-Qdep[i]+Qbp[i]
+        }
+        printf("[Rf] Qs_flux = %e m^2 \n",Qs_flux);
+    }
+
+    // Broadcast processed data to all ranks
+
+    // according to gemini, modified to free memory correctly > unecessary broadcast
+    // ierr = MPI_Bcast(&seq_surface_size, 1, MPI_INT, 0, PETSC_COMM_WORLD); CHKERRQ(ierr);
+
+    // if (rank) {
+    //     ierr = PetscCalloc1(seq_surface_size, &seq_array); CHKERRQ(ierr);
+    //}
+    ierr = MPI_Bcast(seq_array, seq_surface_size, MPIU_SCALAR, 0, PETSC_COMM_WORLD);
+
+    ierr = DMDAGetCorners(da_Veloc, &si, NULL, NULL, NULL, NULL, NULL); CHKERRQ(ierr);
+    ierr = DMSwarmGetLocalSize(dms_s, &nlocal); CHKERRQ(ierr);
+    ierr = DMSwarmGetField(dms_s, DMSwarmPICField_coor, &bs, NULL, (void**)&array); CHKERRQ(ierr);
+
+    for (j = 0; j < nlocal; j++) {
+        array[2*j] = seq_array[si*dms_s_ppe*2+2*j];
+        array[2*j+1] = seq_array[si*dms_s_ppe*2+2*j+1];
+    }
+
+    ierr = DMSwarmRestoreField(dms_s, DMSwarmPICField_coor, &bs, NULL, (void **)&array); CHKERRQ(ierr);
+    // ierr = VecRestoreArray(seq_surface, &seq_array); CHKERRQ(ierr); 
+    // Modified to free memory correctly according to gemini
+    if (!rank) {
+        ierr = VecRestoreArray(seq_surface, &seq_array); CHKERRQ(ierr);
+        ierr = VecDestroy(&seq_surface); CHKERRQ(ierr);
+    } else {
+        ierr = PetscFree(seq_array); CHKERRQ(ierr);
     }
 
     PetscFunctionReturn(0);

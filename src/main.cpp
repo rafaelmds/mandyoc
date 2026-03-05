@@ -289,7 +289,7 @@ int main(int argc,char **args)
 			CHKERRQ(ierr);
 		}
 		
-		if (dimensions == 2 && sp_mode == SP_SEDIMENTATION_RATE_LIMITED) {
+		if (dimensions == 2 && ((sp_mode == SP_SEDIMENTATION_RATE_LIMITED)||(sp_mode == SP_THEUNISSEN_SEDIMENTATION))) {
 			ierr = sp_update_sedimentation_rate(tempo);
 			PetscPrintf(PETSC_COMM_WORLD,"sedimentation rate = %.3g m^2/yr, active sediment layer = %d\n", sedimentation_rate, active_sediment_layer);
 		}

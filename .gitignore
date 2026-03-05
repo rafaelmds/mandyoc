@@ -1,7 +1,8 @@
 /mandyoc
 __pycache__
 .pytest_cache
-/bin
+bin
+references
 
 # Ignore the documentation building folder
 docs/_build

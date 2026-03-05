@@ -15,6 +15,7 @@ typedef enum {
     SP_DIFFUSION, // "diffusion"
     SP_SEDIMENTATION_ONLY, // "sedimentation_only"
     SP_SEDIMENTATION_RATE_LIMITED, // "sedimentation_rate_limited"
+    SP_THEUNISSEN_SEDIMENTATION, // "theunissen_sedimentation"
 } SP_Mode;
 
 // Conversion functions
@@ -26,6 +27,7 @@ static const char* valid_modes[] = {
     "\"diffusion\"          - Simple diffusion (requires sp_d_c)",
     "\"sedimentation_only\" - Only sedimentation below height adjusted by sea level (requires sea_level)",
     "\"sedimentation_rate_limited\" - Fixed sedimentation rate on both margins under the sea level",
+    "\"theunissen_sedimentation\" - Theunissen et al. (2019) dynamic progradation model under the sea level",
     NULL  // Terminator
 };
 
