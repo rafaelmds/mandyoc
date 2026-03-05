@@ -84,6 +84,21 @@ extern PetscInt periodic_boundary;
 
 extern PetscInt high_kappa_in_asthenosphere;
 
+extern Vec divV;
+extern Vec local_divV;
+
+extern Vec dPhi;
+extern Vec local_dPhi;
+
+extern Vec Phi;
+extern Vec local_Phi;
+
+extern Vec X_depletion;
+extern Vec local_X_depletion;
+
+
+extern PetscBool magmatism_flag;
+
 
 typedef struct {
 	PetscScalar u;
@@ -311,7 +326,7 @@ PetscErrorCode AssembleF_Thermal_2d(Vec F,DM thermal_da,PetscReal *TKe,PetscReal
 								 DM veloc_da, Vec Veloc_total)
 {
 
-	PetscScalar              **ff,**tt,**HH;
+	PetscScalar              **ff,**tt,**HH,**ddphi;
 	PetscInt               M,P;
 	PetscErrorCode         ierr;
 
@@ -384,6 +399,15 @@ PetscErrorCode AssembleF_Thermal_2d(Vec F,DM thermal_da,PetscReal *TKe,PetscReal
 	ierr = DMGlobalToLocalEnd(thermal_da,geoq_H,INSERT_VALUES,local_geoq_H);
 
 	ierr = DMDAVecGetArray(thermal_da,local_geoq_H,&HH);CHKERRQ(ierr);
+
+	if (magmatism_flag==PETSC_TRUE){ 
+		ierr = VecZeroEntries(local_dPhi);CHKERRQ(ierr);
+
+		ierr = DMGlobalToLocalBegin(thermal_da,dPhi,INSERT_VALUES,local_dPhi);
+		ierr = DMGlobalToLocalEnd(thermal_da,dPhi,INSERT_VALUES,local_dPhi);
+
+		ierr = DMDAVecGetArray(thermal_da,local_dPhi,&ddphi);CHKERRQ(ierr);
+	}
 
 
 	PetscInt i,j,k,c;
@@ -459,7 +483,27 @@ PetscErrorCode AssembleF_Thermal_2d(Vec F,DM thermal_da,PetscReal *TKe,PetscReal
 
 				H_efetivo += -T_mean*alpha_exp_thermo*gravity*Vz_mean*adiabatic_scaled;
 			}
+			
+			if (magmatism_flag==PETSC_TRUE){ //!!! non-dimentional scale not included yet
+				double T_mean=0.0;
+				for (j=0;j<T_NE;j++) T_mean+=tt[ind[j].j][ind[j].i];
+				T_mean/=T_NE;
+				T_mean+=273.0; //Converting to Kelvin
 
+
+				double dPhi_mean=0.0;
+				for (j=0;j<T_NE;j++) dPhi_mean+=ddphi[ind[j].j][ind[j].i];
+				dPhi_mean/=T_NE;
+
+				float dS = 400.0; //J/kg/K //!!! Include in the parameters file
+
+
+				H_efetivo += -T_mean*dS*dPhi_mean/dt_calor_sec;
+
+
+				
+			}
+			
 
 
 
@@ -513,6 +557,9 @@ PetscErrorCode AssembleF_Thermal_2d(Vec F,DM thermal_da,PetscReal *TKe,PetscReal
 	ierr = DMDAVecRestoreArray(thermal_da,local_TC,&TTC);CHKERRQ(ierr);
 	ierr = DMDAVecRestoreArray(thermal_da,local_Temper,&tt);CHKERRQ(ierr);
 	ierr = DMDAVecRestoreArray(thermal_da,local_geoq_H,&HH);CHKERRQ(ierr);
+	if (magmatism_flag==PETSC_TRUE){ 
+		ierr = DMDAVecRestoreArray(thermal_da,local_dPhi,&ddphi);CHKERRQ(ierr);
+	}
 	ierr = DMDAVecRestoreArray(thermal_da,local_geoq_kappa,&qq_kappa);CHKERRQ(ierr);
 
 	if (periodic_boundary==1){
@@ -745,6 +792,30 @@ PetscErrorCode Thermal_init_2d(Vec F,DM thermal_da)
 
 	if (periodic_boundary==1){
 		ierr = mean_value_periodic_boundary_2d(thermal_da,F,local_F,ff,2);
+	}
+
+
+	if (magmatism_flag==PETSC_TRUE){
+		ierr = DMGetLocalVector(thermal_da,&local_divV);CHKERRQ(ierr);
+		ierr = VecZeroEntries(local_divV);CHKERRQ(ierr);
+		ierr = DMDAVecGetArray(thermal_da,local_divV,&ff);CHKERRQ(ierr);
+
+		PetscInt       sx,sz,mmx,mmz;
+
+		ierr = DMDAGetCorners(thermal_da,&sx,&sz,NULL,&mmx,&mmz,NULL);CHKERRQ(ierr);
+
+		for (k=sz; k<sz+mmz; k++) {
+			for (i=sx; i<sx+mmx; i++) {
+				//if (i==Nx/2 && k==Nz/2-Nz/4) ff[k][i]=+1.0E-14;
+				//if (i==Nx/2 && k==Nz/2+Nz/4) ff[k][i]=-1.0E-14;
+			}
+		}
+
+		ierr = DMDAVecRestoreArray(thermal_da,local_divV,&ff);CHKERRQ(ierr);
+		ierr = DMLocalToGlobalBegin(thermal_da,local_divV,INSERT_VALUES,divV);CHKERRQ(ierr);
+		ierr = DMLocalToGlobalEnd(thermal_da,local_divV,INSERT_VALUES,divV);CHKERRQ(ierr);
+		ierr = DMRestoreLocalVector(thermal_da,&local_divV);CHKERRQ(ierr);
+
 	}
 
 
